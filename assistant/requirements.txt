@@ -1,0 +1,7 @@
+vosk
+piper-tts
+llama-cpp-python
+rapidfuzz
+PyYAML
+scikit-learn
+joblib
