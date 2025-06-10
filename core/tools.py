@@ -13,6 +13,7 @@ __all__ = [
     "open_website",
     "sanitize_domain",
     "launch_app",
+    "kill_process",
     "search_files",
     "play_music",
     "list_tools",
@@ -32,6 +33,10 @@ TOOL_SCHEMAS: List[Dict[str, Any]] = [
     {
         "name": "launch_app",
         "parameters": {"type": "object", "required": ["app"]},
+    },
+    {
+        "name": "kill_process",
+        "parameters": {"type": "object", "required": ["name"]},
     },
     {
         "name": "open_explorer",
@@ -178,3 +183,17 @@ def search_files(directory: str, pattern: str, **_unused: Any) -> Tuple[bool, st
     if matches:
         return True, "; ".join(matches[:5])
     return False, "No files found"
+
+
+@tool
+def kill_process(name: str) -> Tuple[bool, str]:
+    """Force terminate processes matching *name*."""
+    try:
+        if os.name == "nt":
+            cmd = ["taskkill", "/f", "/im", name]
+        else:
+            cmd = ["pkill", "-f", name]
+        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return True, f"Closed {name}"
+    except Exception as exc:  # pragma: no cover - platform dependent
+        return False, str(exc)

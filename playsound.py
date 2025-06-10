@@ -1,0 +1,2 @@
+def playsound(path):
+    pass

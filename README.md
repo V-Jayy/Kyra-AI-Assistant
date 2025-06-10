@@ -30,3 +30,6 @@ This project uses [gTTS](https://gtts.readthedocs.io/) for text-to-speech
 output.
 
 Run `python -m app.scenarios` to execute the CSV-driven self test harness.
+
+The `kill_process` tool can force quit applications by process name, e.g.
+"Close Discord" will terminate `discord.exe` on Windows.
