@@ -143,7 +143,11 @@ async def console_loop(router: IntentRouter, transcript: Transcript) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=["voice", "console"], default="voice")
+    parser.add_argument(
+        "--mode",
+        choices=["voice", "console"],
+        default="voice",
+    )
     parser.add_argument("--model-path", default="vosk-model-small-en-us-0.15")
     parser.add_argument("text", nargs="*", help="Optional one-shot command")
     args = parser.parse_args()
