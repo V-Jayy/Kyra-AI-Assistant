@@ -4,6 +4,7 @@ import json
 from typing import Any, Dict, Tuple
 
 import requests
+from requests.exceptions import RequestException
 from pydantic import BaseModel
 
 from .config import LLM_BASE_URL, MODEL_NAME, DEBUG
@@ -26,9 +27,14 @@ class IntentRouter:
     def _post(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         if DEBUG:
             print("[POST]", payload)
-        resp = requests.post(LLM_BASE_URL, json=payload, timeout=4)
-        resp.raise_for_status()
-        return resp.json()
+        try:
+            resp = requests.post(LLM_BASE_URL, json=payload, timeout=4)
+            resp.raise_for_status()
+            return resp.json()
+        except RequestException as exc:
+            if DEBUG:
+                print("[ERROR]", exc)
+            raise
 
     def route(self, text: str) -> Tuple[str | None, Dict[str, Any], str]:
         tools = [
@@ -59,10 +65,8 @@ class IntentRouter:
         }
         try:
             data = self._post(payload)
-        except Exception as exc:
-            if DEBUG:
-                print("[ERROR]", exc)
-            return None, {}, "error"
+        except Exception:
+            return None, {"content": "LLM server unavailable"}, "error"
 
         choice = data.get("choices", [{}])[0]
         finish = choice.get("finish_reason")
