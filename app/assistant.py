@@ -15,6 +15,7 @@ import logging
 import re
 import urllib.parse
 import webbrowser
+import requests
 
 from core.config import DEBUG, WAKE_WORD, TTS_ENGINE
 from core.intent_router import IntentRouter
@@ -49,7 +50,16 @@ def play_music(url: str | None = None, query: str | None = None) -> tuple[bool, 
     """Play a song, playlist or stream in the default browser."""
     if not url and query:
         q = urllib.parse.quote_plus(query)
-        url = f"https://www.youtube.com/results?search_query={q}"
+        search_url = f"https://www.youtube.com/results?search_query={q}"
+        try:
+            resp = requests.get(search_url, timeout=5)
+            m = re.search(r"/watch\?v=([\w-]{11})", resp.text)
+            if m:
+                url = f"https://www.youtube.com/watch?v={m.group(1)}"
+            else:
+                url = search_url
+        except Exception:
+            url = search_url
     if url:
         try:
             webbrowser.open(url)
