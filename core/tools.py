@@ -190,7 +190,8 @@ def kill_process(name: str) -> Tuple[bool, str]:
     """Force terminate processes matching *name*."""
     try:
         if os.name == "nt":
-            cmd = ["taskkill", "/f", "/im", name]
+            target = name if name.lower().endswith(".exe") else f"{name}.exe"
+            cmd = ["taskkill", "/f", "/im", target]
         else:
             cmd = ["pkill", "-f", name]
         subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

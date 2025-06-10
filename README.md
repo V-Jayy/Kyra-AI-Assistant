@@ -32,4 +32,5 @@ output.
 Run `python -m app.scenarios` to execute the CSV-driven self test harness.
 
 The `kill_process` tool can force quit applications by process name, e.g.
-"Close Discord" will terminate `discord.exe` on Windows.
+"Close Discord" will terminate `discord.exe` on Windows. On Windows, the
+`.exe` extension is added automatically if omitted.
