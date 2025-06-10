@@ -27,8 +27,10 @@ def match_intent(text: str) -> Tuple[Optional[str], Dict[str, str]]:
     m = re.search(r"(?:play|listen to|hear) (?P<song>.+)", cleaned)
     if m:
         song = re.sub(r" on youtube$", "", m.group("song"), flags=re.I).strip()
-        logger.debug("Mapped input '%s' to play_music with arg: '%s'", text, song)
-        return "play_music", {"song": song}
+        logger.debug(
+            "Mapped input '%s' to play_music with arg: '%s'", text, song
+        )
+        return "play_music", {"url": None, "query": song}
 
     m = re.search(r"(?:search for|look up) (?P<query>.+)", cleaned)
     if m:
@@ -59,7 +61,7 @@ def match_intent(text: str) -> Tuple[Optional[str], Dict[str, str]]:
             arg = dom if dom else cleaned
             return "open_website", {"url": arg}
         else:
-            return "play_music", {"song": cleaned}
+            return "play_music", {"url": None, "query": cleaned}
 
     return None, {}
 

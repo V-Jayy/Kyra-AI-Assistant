@@ -6,7 +6,7 @@ from core.dispatcher import match_intent
 def test_match_play():
     name, args = match_intent("please play Bohemian Rhapsody on youtube")
     assert name == "play_music"
-    assert args["song"] == "bohemian rhapsody"
+    assert args["query"] == "bohemian rhapsody"
 
 
 def test_match_search():
