@@ -5,6 +5,11 @@ import functools
 import fnmatch
 from typing import Callable, Dict, Tuple, Any, List
 
+import os
+import subprocess
+import webbrowser
+
+
 from .utils import derive_glob_from_phrase
 
 __all__ = [
@@ -39,14 +44,19 @@ TOOL_SCHEMAS: List[Dict[str, Any]] = [
     },
     {
         "name": "search_files",
-        "parameters": {"type": "object", "required": ["directory", "pattern"]},
+        "parameters": {
+            "type": "object",
+            "required": ["directory", "pattern"],
+        },
     },
 ]
 
 _TOOL_SCHEMA_MAP = {s["name"]: s["parameters"] for s in TOOL_SCHEMAS}
 
 
-def tool(fn: Callable[..., Tuple[bool, str]]) -> Callable[..., Tuple[bool, str]]:
+def tool(
+    fn: Callable[..., Tuple[bool, str]]
+) -> Callable[..., Tuple[bool, str]]:
     """Register a function as an assistant tool."""
     _REGISTRY[fn.__name__] = {
         "signature": str(inspect.signature(fn)),
@@ -63,7 +73,8 @@ def tool(fn: Callable[..., Tuple[bool, str]]) -> Callable[..., Tuple[bool, str]]
 
 def list_tools() -> Dict[str, Dict[str, str]]:
     return {
-        k: {"signature": v["signature"], "doc": v["doc"]} for k, v in _REGISTRY.items()
+        k: {"signature": v["signature"], "doc": v["doc"]}
+        for k, v in _REGISTRY.items()
     }
 
 
@@ -71,7 +82,9 @@ def get_openai_tools() -> List[Dict[str, Any]]:
     """Return tool metadata formatted for OpenAI function-calling."""
     tools: List[Dict[str, Any]] = []
     for name, meta in _REGISTRY.items():
-        params = _TOOL_SCHEMA_MAP.get(name, {"type": "object", "properties": {}})
+        params = _TOOL_SCHEMA_MAP.get(
+            name, {"type": "object", "properties": {}}
+        )
         tools.append(
             {
                 "type": "function",
@@ -95,11 +108,6 @@ def validate_tool_args(name: str, args: Dict[str, Any]) -> None:
     validate(args, schema)
 
 
-import os
-import subprocess
-import webbrowser
-
-
 @tool
 def open_website(url: str) -> Tuple[bool, str]:
     """Open a website in the default browser."""
@@ -113,8 +121,9 @@ def open_website(url: str) -> Tuple[bool, str]:
 
 
 @tool
-def launch_app(path: str) -> Tuple[bool, str]:
+def launch_app(app: str) -> Tuple[bool, str]:
     """Launch an application."""
+    path = app
     try:
         if os.name == "nt":
             os.startfile(path)  # type: ignore[attr-defined]
@@ -126,7 +135,11 @@ def launch_app(path: str) -> Tuple[bool, str]:
 
 
 @tool
-def search_files(directory: str, pattern: str, **_unused: Any) -> Tuple[bool, str]:
+def search_files(
+    directory: str,
+    pattern: str,
+    **_unused: Any,
+) -> Tuple[bool, str]:
     """Search for files under a directory."""
     root = os.path.expanduser(directory)
     glob_pattern = derive_glob_from_phrase(pattern)
