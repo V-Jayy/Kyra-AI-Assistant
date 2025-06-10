@@ -1,7 +1,8 @@
 vosk
 piper-tts
 llama-cpp-python
-rapidfuzz
+rapidfuzz==3.*
+
 PyYAML
 scikit-learn
 joblib
