@@ -11,12 +11,8 @@ def tool(fn):
         "doc": inspect.getdoc(fn) or "",
         "callable": fn,
     }
-
-    @functools.wraps(fn)
-    def wrapper(*args, **kwargs):
-        return fn(*args, **kwargs)
-
-    return wrapper
+    # Return the original function so object identity is preserved for tests
+    return fn
 
 
 def export_capabilities(path="capabilities.json"):

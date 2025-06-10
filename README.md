@@ -25,7 +25,10 @@ the project directory.
 Run the assistant:
 
 ```bash
-python -m assistant.main --debug --voice en-us-kathleen-low
+python -m assistant.main --debug --voice en_US-amy-high
+
+Voice models are downloaded automatically into `~/.cache/kyra/voices/` on first
+use. Adjust the voice or wake word in `config.yaml`.
 ```
 
 Say **"Hey Luna"** followed by a polite request. Luna introspects its tools

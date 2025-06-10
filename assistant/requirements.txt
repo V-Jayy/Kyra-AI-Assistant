@@ -1,5 +1,7 @@
 vosk
-piper-tts
+piper-tts==1.2.0
+pvporcupine
+sounddevice
 llama-cpp-python
 rapidfuzz
 PyYAML
