@@ -57,7 +57,7 @@ async def main() -> None:
             res = json.loads(recognizer.Result())
             text = res.get("text", "").lower()
             if args.debug and text:
-                print("STT:", text)
+                print("\rSTT:", text, flush=True)
             if state == "wake" and text.startswith(WAKE_WORD):
                 speak("I'm listening", not args.headless)
                 state = "command"
@@ -65,6 +65,11 @@ async def main() -> None:
                 command_text = text
                 await handle_command(command_text, router, not args.headless)
                 state = "wake"
+        elif args.debug:
+            pres = json.loads(recognizer.PartialResult())
+            partial = pres.get("partial", "")
+            if partial:
+                print("\rSTT (partial):", partial, end="", flush=True)
 
 
 if __name__ == "__main__":
