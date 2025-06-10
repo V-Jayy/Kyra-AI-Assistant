@@ -11,11 +11,15 @@ from tempfile import NamedTemporaryFile
 import pyaudio
 from playsound import playsound
 from vosk import Model, KaldiRecognizer
+import logging
 
 from core.config import DEBUG, WAKE_WORD
 from core.intent_router import IntentRouter
 from core.transcript import Transcript
 from core.tools import _REGISTRY
+
+
+logger = logging.getLogger(__name__)
 
 
 async def microphone_chunks() -> AsyncGenerator[bytes, None]:
@@ -45,10 +49,23 @@ async def microphone_chunks() -> AsyncGenerator[bytes, None]:
 
 
 def speak(text: str, enable: bool) -> None:
+    text = (text or "").strip()
+    if not text:
+        logger.info("Empty reply – nothing to speak.")
+        return
+
     if enable:
-        tts = gTTS(text)
+        try:
+            tts_obj = gTTS(text)
+        except AssertionError as e:
+            logger.error(
+                "TTS failed: %s",
+                e,
+                exc_info=logger.isEnabledFor(logging.DEBUG),
+            )
+            return
         with NamedTemporaryFile(delete=False, suffix=".mp3") as f:
-            tts.save(f.name)
+            tts_obj.save(f.name)
         playsound(f.name)
         os.remove(f.name)
     else:
