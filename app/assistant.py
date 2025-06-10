@@ -6,8 +6,10 @@ import json
 import os
 from typing import AsyncGenerator
 
-import pyttsx3
+from gtts import gTTS
+from tempfile import NamedTemporaryFile
 import pyaudio
+from playsound import playsound
 from vosk import Model, KaldiRecognizer
 
 from core.config import DEBUG, WAKE_WORD
@@ -42,10 +44,13 @@ async def microphone_chunks() -> AsyncGenerator[bytes, None]:
         yield data
 
 
-def speak(text: str, engine: pyttsx3.Engine, enable: bool) -> None:
+def speak(text: str, enable: bool) -> None:
     if enable:
-        engine.say(text)
-        engine.runAndWait()
+        tts = gTTS(text)
+        with NamedTemporaryFile(delete=False, suffix=".mp3") as f:
+            tts.save(f.name)
+        playsound(f.name)
+        os.remove(f.name)
     else:
         print(f"Assistant: {text}")
 
@@ -57,8 +62,6 @@ async def voice_loop(
         raise FileNotFoundError(f"Vosk model missing at {model_path}")
     model = Model(model_path)
     recognizer = KaldiRecognizer(model, 16000)
-    engine = pyttsx3.init()
-
     transcript.log("BOT", "Ready")
     async for chunk in microphone_chunks():
         if recognizer.AcceptWaveform(chunk):
@@ -68,21 +71,20 @@ async def voice_loop(
                 continue
             transcript.log("USER", text)
             if text.lower().startswith(WAKE_WORD.lower()):
-                speak("I'm listening", engine, tts)
+                speak("I'm listening", tts)
                 continue
             name, args, _ = router.route(text)
             if name and name in _REGISTRY:
                 ok, msg = _REGISTRY[name]["callable"](**args)
                 transcript.log("BOT", msg)
-                speak(msg, engine, tts)
+                speak(msg, tts)
             else:
                 reply = args.get("content", "I didn't understand")
                 transcript.log("BOT", reply)
-                speak(reply, engine, tts)
+                speak(reply, tts)
 
 
 async def console_loop(router: IntentRouter, transcript: Transcript) -> None:
-    engine = pyttsx3.init()
     while True:
         text = input("You: ")
         if not text:
@@ -92,11 +94,11 @@ async def console_loop(router: IntentRouter, transcript: Transcript) -> None:
         if name and name in _REGISTRY:
             ok, msg = _REGISTRY[name]["callable"](**args)
             transcript.log("BOT", msg)
-            speak(msg, engine, False)
+            speak(msg, False)
         else:
             reply = args.get("content", "I didn't understand")
             transcript.log("BOT", reply)
-            speak(reply, engine, False)
+            speak(reply, False)
 
 
 def main() -> None:
