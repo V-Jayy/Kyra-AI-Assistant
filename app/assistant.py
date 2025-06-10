@@ -105,10 +105,24 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=["voice", "console"], default="voice")
     parser.add_argument("--model-path", default="vosk-model-small-en-us-0.15")
+    parser.add_argument("text", nargs="*", help="Optional one-shot command")
     args = parser.parse_args()
 
     transcript = Transcript(DEBUG)
     router = IntentRouter()
+
+    if args.text:
+        query = " ".join(args.text)
+        name, params, _ = router.route(query)
+        if name and name in _REGISTRY:
+            ok, msg = _REGISTRY[name]["callable"](**params)
+            transcript.log("BOT", msg)
+            speak(msg, False)
+        else:
+            reply = params.get("content", "I didn't understand")
+            transcript.log("BOT", reply)
+            speak(reply, False)
+        return
 
     if args.mode == "voice":
         asyncio.run(voice_loop(router, args.model_path, True, transcript))
