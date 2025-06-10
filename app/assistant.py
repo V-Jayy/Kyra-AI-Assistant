@@ -22,6 +22,28 @@ from core.tools import _REGISTRY
 logger = logging.getLogger(__name__)
 
 
+def summarise_router_reply(reply: str) -> str:
+    """Return a short sentence for TTS or fallback message."""
+    try:
+        obj = json.loads(reply)
+    except Exception:
+        return "I was unable to get that."
+
+    name = obj.get("function", {}).get("name")
+    args = obj.get("arguments", {})
+
+    if name == "open_website":
+        url = args.get("url", "")
+        site = url.split("//")[-1].split("/")[0] or url
+        return f"Opening {site}"
+    elif name == "launch_app":
+        return f"Launching {args.get('app', 'application')}"
+    elif name == "search_files":
+        return "Searching files"
+    else:
+        return "I was unable to get that."
+
+
 async def microphone_chunks() -> AsyncGenerator[bytes, None]:
     q: asyncio.Queue[bytes] = asyncio.Queue()
     loop = asyncio.get_running_loop()
@@ -98,7 +120,8 @@ async def voice_loop(
             else:
                 reply = args.get("content", "I didn't understand")
                 transcript.log("BOT", reply)
-                speak(reply, tts)
+                spoken = summarise_router_reply(reply)
+                speak(spoken, tts)
 
 
 async def console_loop(router: IntentRouter, transcript: Transcript) -> None:
@@ -120,7 +143,11 @@ async def console_loop(router: IntentRouter, transcript: Transcript) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=["voice", "console"], default="voice")
+    parser.add_argument(
+        "--mode",
+        choices=["voice", "console"],
+        default="voice",
+    )
     parser.add_argument("--model-path", default="vosk-model-small-en-us-0.15")
     parser.add_argument("text", nargs="*", help="Optional one-shot command")
     args = parser.parse_args()
