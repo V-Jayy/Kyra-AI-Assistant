@@ -2,9 +2,48 @@ from __future__ import annotations
 
 import inspect
 import functools
-from typing import Callable, Dict, Tuple, Any
+import fnmatch
+from typing import Callable, Dict, Tuple, Any, List
+
+from .utils import derive_glob_from_phrase
+
+__all__ = [
+    "open_website",
+    "launch_app",
+    "search_files",
+    "list_tools",
+    "get_openai_tools",
+    "validate_tool_args",
+    "derive_glob_from_phrase",
+]
 
 _REGISTRY: Dict[str, Dict[str, Any]] = {}
+
+# Tool schemas used for OpenAI function calling
+TOOL_SCHEMAS: List[Dict[str, Any]] = [
+    {
+        "name": "open_website",
+        "parameters": {"type": "object", "required": ["url"]},
+    },
+    {
+        "name": "launch_app",
+        "parameters": {"type": "object", "required": ["app"]},
+    },
+    {
+        "name": "open_explorer",
+        "parameters": {"type": "object", "required": ["path"]},
+    },
+    {
+        "name": "find_file_and_open",
+        "parameters": {"type": "object", "required": []},
+    },
+    {
+        "name": "search_files",
+        "parameters": {"type": "object", "required": ["directory", "pattern"]},
+    },
+]
+
+_TOOL_SCHEMA_MAP = {s["name"]: s["parameters"] for s in TOOL_SCHEMAS}
 
 
 def tool(fn: Callable[..., Tuple[bool, str]]) -> Callable[..., Tuple[bool, str]]:
@@ -26,6 +65,34 @@ def list_tools() -> Dict[str, Dict[str, str]]:
     return {
         k: {"signature": v["signature"], "doc": v["doc"]} for k, v in _REGISTRY.items()
     }
+
+
+def get_openai_tools() -> List[Dict[str, Any]]:
+    """Return tool metadata formatted for OpenAI function-calling."""
+    tools: List[Dict[str, Any]] = []
+    for name, meta in _REGISTRY.items():
+        params = _TOOL_SCHEMA_MAP.get(name, {"type": "object", "properties": {}})
+        tools.append(
+            {
+                "type": "function",
+                "function": {
+                    "name": name,
+                    "description": meta["doc"],
+                    "parameters": params,
+                },
+            }
+        )
+    return tools
+
+
+def validate_tool_args(name: str, args: Dict[str, Any]) -> None:
+    """Validate arguments for a registered tool using JSON schema."""
+    schema = _TOOL_SCHEMA_MAP.get(name)
+    if not schema:
+        return
+    from jsonschema import validate
+
+    validate(args, schema)
 
 
 import os
@@ -62,10 +129,11 @@ def launch_app(path: str) -> Tuple[bool, str]:
 def search_files(pattern: str, root: str = "~") -> Tuple[bool, str]:
     """Search for files under a directory."""
     root = os.path.expanduser(root)
-    matches = []
+    glob_pattern = derive_glob_from_phrase(pattern)
+    matches: List[str] = []
     for dirpath, _dirs, files in os.walk(root):
         for f in files:
-            if pattern.lower() in f.lower():
+            if fnmatch.fnmatch(f.lower(), glob_pattern.lower()):
                 matches.append(os.path.join(dirpath, f))
     if matches:
         return True, "; ".join(matches[:5])
