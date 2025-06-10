@@ -17,7 +17,8 @@ from core.tools import _REGISTRY
 
 
 async def microphone_chunks() -> AsyncGenerator[bytes, None]:
-    q = asyncio.Queue()
+    q: asyncio.Queue[bytes] = asyncio.Queue()
+    loop = asyncio.get_running_loop()
 
     def _worker() -> None:
         pa = pyaudio.PyAudio()
@@ -31,7 +32,7 @@ async def microphone_chunks() -> AsyncGenerator[bytes, None]:
         stream.start_stream()
         while True:
             data = stream.read(4000, exception_on_overflow=False)
-            asyncio.run_coroutine_threadsafe(q.put(data), asyncio.get_event_loop())
+            asyncio.run_coroutine_threadsafe(q.put(data), loop)
 
     import threading
 
