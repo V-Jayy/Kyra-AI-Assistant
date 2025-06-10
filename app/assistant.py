@@ -13,31 +13,75 @@ from playsound import playsound
 from vosk import Model, KaldiRecognizer
 import logging
 import re
+import urllib.parse
+import webbrowser
+import requests
 
 from core.config import DEBUG, WAKE_WORD, TTS_ENGINE
 from core.intent_router import IntentRouter
 from core.transcript import Transcript
 
-from core.tools import _REGISTRY
+from core.tools import _REGISTRY, tool, _TOOL_SCHEMA_MAP
 from core.dispatcher import match_intent
 
 ROUTER_PROMPT = """
-You are an intent-router for a local voice assistant.
-Return **only** this JSON schema — no prose, no code fences:
+You are an intent‑router for a local voice assistant.
+
+Respond with **ONLY** a JSON object like one of these — no prose, no markdown:
+
+{ "function": null }
+
+or
 
 {
   "function": {
     "name": "<one_of_the_function_names_provided>",
-    "arguments": { ... }
+    "arguments": { /* every required parameter */ }
   }
 }
-
-If no function fits, respond with:
-{ "function": null }
 """
 
 
 logger = logging.getLogger(__name__)
+
+
+@tool
+def play_music(url: str | None = None, query: str | None = None) -> tuple[bool, str]:
+    """Play a song, playlist or stream in the default browser."""
+    if not url and query:
+        q = urllib.parse.quote_plus(query)
+        search_url = f"https://www.youtube.com/results?search_query={q}"
+        try:
+            resp = requests.get(search_url, timeout=5)
+            m = re.search(r"/watch\?v=([\w-]{11})", resp.text)
+            if m:
+                url = f"https://www.youtube.com/watch?v={m.group(1)}"
+            else:
+                url = search_url
+        except Exception:
+            url = search_url
+    if url:
+        try:
+            webbrowser.open(url)
+            return True, f"Playing {query or url}"
+        except Exception as exc:  # pragma: no cover - platform dependent
+            return False, str(exc)
+    return False, "No URL provided"
+
+_TOOL_SCHEMA_MAP["play_music"] = {
+    "type": "object",
+    "properties": {
+        "url": {
+            "type": "string",
+            "description": "A direct media URL (YouTube, Spotify, SoundCloud, etc.)",
+        },
+        "query": {
+            "type": "string",
+            "description": "A free-text search term if the user did not supply a URL",
+        },
+    },
+    "required": ["url"],
+}
 
 
 def _safe_json_load(raw: str) -> Dict[str, Any] | None:
@@ -57,24 +101,34 @@ def _safe_json_load(raw: str) -> Dict[str, Any] | None:
     return None
 
 
-def summarise_router_reply(reply: str | Dict[str, Any]) -> Optional[str]:
-    """
-    Returns the chosen function's name (str) or None.
-    Works with both the new nested schema and the legacy flat schema.
-    Never raises JSONDecodeError or AttributeError.
-    """
+def summarise_router_reply(reply: str | Dict[str, Any]) -> tuple[str | None, Dict[str, Any]]:
+    """Return (function_name, arguments) from *reply* without raising."""
     if isinstance(reply, dict):
         obj = reply
     else:
         obj = _safe_json_load(reply) or {}
 
+    name: str | None = None
+    args: Dict[str, Any] = {}
+
     func = obj.get("function")
 
     if isinstance(func, dict):
-        return func.get("name")
+        name = func.get("name")
+        raw_args = func.get("arguments", {})
+        if isinstance(raw_args, str):
+            try:
+                args = json.loads(raw_args)
+            except json.JSONDecodeError:
+                args = {}
+        elif isinstance(raw_args, dict):
+            args = raw_args
     elif isinstance(func, str):
-        return func
-    return None
+        name = func
+        raw_args = obj.get("arguments", {})
+        if isinstance(raw_args, dict):
+            args = raw_args
+    return name, args
 
 
 async def microphone_chunks() -> AsyncGenerator[bytes, None]:

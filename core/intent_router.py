@@ -14,6 +14,7 @@ import os
 
 from .config import MODEL_NAME, DEBUG
 from .tools import _REGISTRY, get_openai_tools, validate_tool_args
+import re
 
 
 class ToolCall(BaseModel):
@@ -26,9 +27,37 @@ class IntentRouter:
 
     def __init__(self) -> None:
         self.system_prompt = (
-            "You are an intent router. Choose the best function and return JSON only."
+            "You are an intent\u2011router for a local voice assistant.\n\n"
+            "Respond with **ONLY** a JSON object like one of these \u2014 no prose, no markdown:\n\n"
+            "{ \"function\": null }\n\n"
+            "or\n\n"
+            "{\n  \"function\": {\n    \"name\": \"<one_of_the_function_names_provided>\",\n    \"arguments\": { /* every required parameter */ }\n  }\n}"
         )
-        self.tools = get_openai_tools()
+        base = [t for t in get_openai_tools() if t.get("function", {}).get("name") != "play_music"]
+        base.append(
+            {
+                "type": "function",
+                "function": {
+                    "name": "play_music",
+                    "description": "Play a song, playlist, or stream in the default browser.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string",
+                                "description": "A direct media URL (YouTube, Spotify, SoundCloud, etc.)",
+                            },
+                            "query": {
+                                "type": "string",
+                                "description": "A free-text search term if the user did not supply a URL",
+                            },
+                        },
+                        "required": ["url"],
+                    },
+                },
+            }
+        )
+        self.tools = base
         self.logger = logging.getLogger(__name__)
 
     def _post(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -55,6 +84,13 @@ class IntentRouter:
         return resp.json()
 
     def route(self, text: str) -> Tuple[str | None, Dict[str, Any], str]:
+        if m := re.search(r"(https?://\S+)", text):
+            return "open_website", {"url": m.group(1)}, "open_website"
+
+        fallback: Tuple[str, Dict[str, Any]] | None = None
+        if text.lower().startswith("play "):
+            fallback = ("play_music", {"url": None, "query": text[5:].strip()})
+
         tools = self.tools
 
         messages = [
@@ -72,6 +108,9 @@ class IntentRouter:
             data = self._post(payload)
         except RequestException as exc:
             self.logger.error("llm_request_failed", extra={"error": str(exc)})
+            if fallback:
+                name, args = fallback
+                return name, args, name
             return None, {"error": str(exc)}, "error"
 
         choice = data.get("choices", [{}])[0]
