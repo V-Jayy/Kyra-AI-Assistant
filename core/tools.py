@@ -113,14 +113,17 @@ def open_website(url: str) -> Tuple[bool, str]:
 
 
 @tool
-def launch_app(path: str) -> Tuple[bool, str]:
+def launch_app(*, app: str | None = None, program: str | None = None, path: str | None = None) -> Tuple[bool, str]:
     """Launch an application."""
+    target = program or app or path
+    if not target:
+        return False, "No program specified"
     try:
         if os.name == "nt":
-            os.startfile(path)  # type: ignore[attr-defined]
+            os.startfile(target)  # type: ignore[attr-defined]
         else:
-            subprocess.Popen([path])
-        return True, f"Launching {path}"
+            subprocess.Popen([target])
+        return True, f"Launching {target}"
     except Exception as exc:  # pragma: no cover - platform dependent
         return False, str(exc)
 
