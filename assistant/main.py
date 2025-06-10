@@ -3,12 +3,14 @@ import asyncio
 import json
 import logging
 import os
+import yaml
 
 from vosk import KaldiRecognizer, Model
 
 from .stt import speech_chunks
 from .router import Router
 from .tts import speak, set_voice
+from .console import TranscriptConsole
 
 logging.basicConfig(
     filename="assistant.log",
@@ -16,8 +18,16 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s:%(message)s",
 )
 
+CONFIG_PATH = "config.yaml"
 WAKE_WORD = "hey luna"
 MODEL_PATH = "vosk-model-small-en-us-0.15"
+
+
+def load_config(path: str = CONFIG_PATH) -> dict:
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f)
+    return {}
 
 
 async def load_stt() -> KaldiRecognizer:
@@ -45,7 +55,13 @@ async def main() -> None:
     parser.add_argument("--voice", default="en-us-kathleen-low")
     args = parser.parse_args()
 
-    set_voice(args.voice)
+    cfg = load_config()
+    set_voice(args.voice or cfg.get("tts_voice", "en-us-kathleen-low"))
+    global WAKE_WORD, MODEL_PATH
+    WAKE_WORD = cfg.get("wake_word", WAKE_WORD)
+    MODEL_PATH = cfg.get("stt_engine", {}).get("model_path", MODEL_PATH)
+
+    console = TranscriptConsole(debug=cfg.get("debug", False) or args.debug)
     router = Router()
     recognizer = await load_stt()
 
@@ -56,8 +72,8 @@ async def main() -> None:
         if recognizer.AcceptWaveform(chunk):
             res = json.loads(recognizer.Result())
             text = res.get("text", "").lower()
-            if args.debug and text:
-                print("\rSTT:", text, flush=True)
+            if console.debug and text:
+                console.log(text, user=True)
             if state == "wake" and text.startswith(WAKE_WORD):
                 speak("I'm listening", not args.headless)
                 state = "command"
@@ -65,11 +81,11 @@ async def main() -> None:
                 command_text = text
                 await handle_command(command_text, router, not args.headless)
                 state = "wake"
-        elif args.debug:
+        elif console.debug:
             pres = json.loads(recognizer.PartialResult())
             partial = pres.get("partial", "")
             if partial:
-                print("\rSTT (partial):", partial, end="", flush=True)
+                console.log(partial, user=True)
 
 
 if __name__ == "__main__":

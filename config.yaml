@@ -1,0 +1,9 @@
+wake_word: "hey nova"
+debug: true
+tts_voice: "en-us-kathleen-low"
+stt_engine:
+  type: "vosk"
+  model_path: "vosk-model-small-en-us-0.15"
+tools:
+  default_browser: "chrome"
+  default_editor: "code"

@@ -4,7 +4,7 @@ from typing import Callable, Tuple, Dict, Any
 
 from . import actions
 from .nlu import normalize
-from .tools import _REGISTRY
+from .tools import _REGISTRY, match_tool
 
 try:
     from llama_cpp import Llama
@@ -39,13 +39,9 @@ class Router:
             return "", {}
 
     def _heuristic_select(self, text: str) -> Tuple[str, Dict[str, Any]]:
-        text = text.lower()
-        if "download" in text:
-            return "reveal_folder", {"path": os.path.expandvars("%USERPROFILE%/Downloads")}
-        if "youtube" in text:
-            return "open_website", {"url": "youtube.com"}
-        if "open" in text and "website" in text:
-            return "open_website", {"url": text.split()[-1]}
+        tool, params = match_tool(text)
+        if tool:
+            return tool.name, params
         return "", {}
 
     def select(self, text: str) -> Tuple[Callable[..., Tuple[bool, str]], Dict[str, Any]]:
