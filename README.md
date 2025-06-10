@@ -2,6 +2,17 @@
 
 This project provides an offline voice assistant powered by local models.
 
+## Quick Start
+
+```shell
+git clone ...
+cd Kyra-AI-Assistant
+start.bat          # Windows
+# or
+pip install -e .   # any OS
+Kyra help
+```
+
 ## Setup
 
 1. **Build `llama.cpp`**
@@ -24,7 +35,7 @@ This project provides an offline voice assistant powered by local models.
    ```
 5. **Run the assistant**
    ```bash
-   python -m app.assistant --mode voice
+   python -m kyra.main --mode voice
    ```
 
 Run `python -m app.scenarios` to execute the CSV-driven self test harness.

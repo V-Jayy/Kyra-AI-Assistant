@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, Tuple
 
-import requests
 from pydantic import BaseModel
 
-from .config import LLM_BASE_URL, MODEL_NAME, DEBUG
+from kyra.local_llm import generate
+from .config import MODEL_NAME, DEBUG
 from .tools import _REGISTRY
 
 
@@ -26,9 +26,11 @@ class IntentRouter:
     def _post(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         if DEBUG:
             print("[POST]", payload)
-        resp = requests.post(LLM_BASE_URL, json=payload, timeout=4)
-        resp.raise_for_status()
-        return resp.json()
+        text = generate(json.dumps(payload))
+        try:
+            return json.loads(text)
+        except Exception:
+            return {}
 
     def route(self, text: str) -> Tuple[str | None, Dict[str, Any], str]:
         tools = [

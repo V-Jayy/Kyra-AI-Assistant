@@ -1,5 +1,5 @@
 vosk
-requests
 pydantic
 pyttsx3
 rapidfuzz
+llama-cpp-python
