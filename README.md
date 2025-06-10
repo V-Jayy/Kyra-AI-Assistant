@@ -21,6 +21,10 @@ This project provides an offline voice assistant powered by local models.
    ```bash
    python -m app.assistant --mode voice
    ```
+   Use `--mode text` to interact via the console only.
+
+The assistant reads optional settings from `config.json` where you can
+customise the wake word, enable debug logging and choose the TTS engine.
 
 This project uses [gTTS](https://gtts.readthedocs.io/) for text-to-speech
 output.

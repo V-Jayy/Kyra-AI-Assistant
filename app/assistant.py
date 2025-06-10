@@ -14,11 +14,12 @@ from vosk import Model, KaldiRecognizer
 import logging
 import re
 
-from core.config import DEBUG, WAKE_WORD
+from core.config import DEBUG, WAKE_WORD, TTS_ENGINE
 from core.intent_router import IntentRouter
 from core.transcript import Transcript
 
 from core.tools import _REGISTRY
+from core.dispatcher import match_intent
 
 ROUTER_PROMPT = """
 You are an intent-router for a local voice assistant.
@@ -126,6 +127,28 @@ def speak(text: str, enable: bool) -> None:
         print(f"Assistant: {text}")
 
 
+def handle_text(text: str, router: IntentRouter, tts: bool, transcript: Transcript) -> None:
+    """Map *text* to a tool either via local rules or the LLM."""
+    name, args = match_intent(text)
+    if name and name in _REGISTRY:
+        if DEBUG:
+            logger.info("Mapped input '%s' to '%s' with %s", text, name, args)
+        ok, msg = _REGISTRY[name]["callable"](**args)
+        transcript.log("BOT", msg)
+        speak(msg, tts)
+        return
+
+    name, args_route, _ = router.route(text)
+    if name and name in _REGISTRY:
+        ok, msg = _REGISTRY[name]["callable"](**args_route)
+        transcript.log("BOT", msg)
+        speak(msg, tts)
+    else:
+        reply = args_route.get("content", "I didn't understand")
+        transcript.log("BOT", reply)
+        speak(reply, tts)
+
+
 async def voice_loop(
     router: IntentRouter, model_path: str, tts: bool, transcript: Transcript
 ) -> None:
@@ -144,17 +167,7 @@ async def voice_loop(
             if text.lower().startswith(WAKE_WORD.lower()):
                 speak("I'm listening", tts)
                 continue
-            name, args, _ = router.route(text)
-            if name and name in _REGISTRY:
-                ok, msg = _REGISTRY[name]["callable"](**args)
-                transcript.log("BOT", msg)
-                speak(msg, tts)
-            else:
-                reply = args.get("content", "I didn't understand")
-                transcript.log("BOT", reply)
-                name = summarise_router_reply(reply)
-                spoken = name if name else "Sorry, I didn't catch a valid command."
-                speak(spoken, tts)
+            handle_text(text, router, tts, transcript)
 
 
 async def console_loop(router: IntentRouter, transcript: Transcript) -> None:
@@ -163,27 +176,21 @@ async def console_loop(router: IntentRouter, transcript: Transcript) -> None:
         if not text:
             continue
         transcript.log("USER", text)
-        name, args, _ = router.route(text)
-        if name and name in _REGISTRY:
-            ok, msg = _REGISTRY[name]["callable"](**args)
-            transcript.log("BOT", msg)
-            speak(msg, False)
-        else:
-            reply = args.get("content", "I didn't understand")
-            transcript.log("BOT", reply)
-            speak(reply, False)
+        handle_text(text, router, False, transcript)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--mode",
-        choices=["voice", "console"],
+        choices=["voice", "text"],
         default="voice",
     )
     parser.add_argument("--model-path", default="vosk-model-small-en-us-0.15")
     parser.add_argument("text", nargs="*", help="Optional one-shot command")
     args = parser.parse_args()
+
+    logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO)
 
     transcript = Transcript(DEBUG)
     router = IntentRouter()
