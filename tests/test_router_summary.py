@@ -15,5 +15,13 @@ def test_open_website():
     assert summarise_router_reply(data) == "Opening www.google.com"
 
 
+def test_launch_app():
+    data = (
+        '{"function":{"name":"launch_app"},'
+        '"arguments":{"app":"notepad"}}'
+    )
+    assert summarise_router_reply(data) == "Launching notepad"
+
+
 def test_invalid_json():
     assert summarise_router_reply('') == "I was unable to get that."
