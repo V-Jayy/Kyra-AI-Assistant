@@ -6,6 +6,22 @@ from typing import Any, Dict, List, Tuple
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from rapidfuzz import fuzz
+from pathlib import Path
+
+# path to filler words file used for basic text normalisation
+FILLER_FILE = Path(__file__).with_name("filler_words.txt")
+
+
+def normalize(text: str) -> str:
+    """Lowercase and strip filler words from the input."""
+    if FILLER_FILE.exists():
+        with open(FILLER_FILE, "r", encoding="utf-8") as f:
+            fillers = [re.escape(w.strip()) for w in f if w.strip()]
+        if fillers:
+            pattern = re.compile(r"\b(?:" + "|".join(fillers) + r")\b", re.I)
+            text = pattern.sub("", text)
+    text = re.sub(r"\s+", " ", text).strip().lower()
+    return text
 
 
 class Command:

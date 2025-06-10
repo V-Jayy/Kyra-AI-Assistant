@@ -3,7 +3,10 @@ import subprocess
 import webbrowser
 from typing import Dict, Tuple
 
+from .tools import tool, export_capabilities
 
+
+@tool
 def open_website(url: str) -> Tuple[bool, str]:
     """Open a website in the default browser."""
     try:
@@ -15,20 +18,22 @@ def open_website(url: str) -> Tuple[bool, str]:
         return False, str(exc)
 
 
-def launch(app_path: str) -> Tuple[bool, str]:
+@tool
+def launch_app(path: str) -> Tuple[bool, str]:
     """Launch an application given its path."""
     try:
-        os.startfile(app_path)  # type: ignore[attr-defined]
-        return True, f"Launching {app_path}"
+        os.startfile(path)  # type: ignore[attr-defined]
+        return True, f"Launching {path}"
     except Exception as exc:
         try:
-            subprocess.Popen(app_path)
-            return True, f"Launching {app_path}"
+            subprocess.Popen(path)
+            return True, f"Launching {path}"
         except Exception:
             return False, str(exc)
 
 
-def search_files(pattern: str, root: str) -> Tuple[bool, str]:
+@tool
+def search_files(pattern: str, root: str = "~") -> Tuple[bool, str]:
     """Search for files matching pattern under root."""
     matches = []
     for dirpath, _dirs, files in os.walk(root):
@@ -40,6 +45,7 @@ def search_files(pattern: str, root: str) -> Tuple[bool, str]:
     return False, "No files found"
 
 
+@tool
 def reveal_folder(path: str) -> Tuple[bool, str]:
     """Open folder in Explorer."""
     try:
@@ -48,17 +54,5 @@ def reveal_folder(path: str) -> Tuple[bool, str]:
     except Exception as exc:
         return False, str(exc)
 
-
-# Dispatcher mapping
-actions: Dict[str, callable] = {
-    "open_website": open_website,
-    "launch": launch,
-    "search_files": search_files,
-    "reveal_folder": reveal_folder,
-}
-
-
-def dispatch(action_name: str, **kwargs) -> Tuple[bool, str]:
-    if action_name not in actions:
-        return False, f"Unknown action {action_name}"
-    return actions[action_name](**kwargs)
+# Export tool registry to capabilities.json when this module is imported
+export_capabilities()

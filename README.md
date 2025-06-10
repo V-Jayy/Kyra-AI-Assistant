@@ -25,7 +25,8 @@ the project directory.
 Run the assistant:
 
 ```bash
-python -m assistant.main --debug
+python -m assistant.main --debug --voice en-us-kathleen-low
 ```
 
-Say **"Hey Luna"** followed by a supported command (see `assistant/commands.yml`).
+Say **"Hey Luna"** followed by a polite request. Luna introspects its tools
+from `capabilities.json` and chooses the right action.
