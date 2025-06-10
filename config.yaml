@@ -1,0 +1,4 @@
+# Kyra assistant configuration
+wake_word: nova
+tts_voice: en_US-amy-high
+debug: false
