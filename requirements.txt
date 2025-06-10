@@ -1,5 +1,6 @@
 vosk
 requests
 pydantic
-pyttsx3
+gTTS
+playsound==1.2.2
 rapidfuzz
