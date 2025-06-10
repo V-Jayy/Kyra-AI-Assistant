@@ -1,24 +1,20 @@
-import sys, os, json
+import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from assistant.router import Router
 from assistant import actions
 
 
-def test_router_polite_phrases(tmp_path):
-    # create minimal capabilities for router
-    Router()  # ensure capabilities.json exists via actions import
-    caps = tmp_path / 'cap.json'
-    with open('capabilities.json', 'r', encoding='utf-8') as f_in:
-        data = json.load(f_in)
-    with open(caps, 'w', encoding='utf-8') as f_out:
-        json.dump(data, f_out)
+def test_router_polite_phrases():
+    router = Router()
+    fn, kwargs, intent, conf = router.select('Could you kindly open YouTube?')
+    assert fn is not None
+    assert fn.__name__ == actions.open_website.__name__
+    assert kwargs.get('url') == 'youtube.com'
+    assert intent == 'open_website'
+    assert conf >= 0.75
 
-    router = Router(capabilities_path=str(caps), model_path=None)
-    fn, kwargs = router.select('Could you kindly open YouTube?')
-    assert fn == actions.open_website
-    assert 'youtube' in kwargs.get('url', '')
-
-    fn2, kwargs2 = router.select('Show me my downloads, please')
-    assert fn2 == actions.reveal_folder
-
+    fn2, kwargs2, intent2, _ = router.select('Show me my downloads, please')
+    assert fn2 is not None
+    assert fn2.__name__ == actions.reveal_folder.__name__
+    assert intent2 == 'reveal_folder'
