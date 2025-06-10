@@ -6,7 +6,9 @@ from typing import Any, Dict, Tuple
 import requests
 from pydantic import BaseModel
 
-from .config import LLM_BASE_URL, MODEL_NAME, DEBUG
+import os
+
+from .config import MODEL_NAME, DEBUG
 from .tools import _REGISTRY
 
 
@@ -26,8 +28,21 @@ class IntentRouter:
     def _post(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         if DEBUG:
             print("[POST]", payload)
-        resp = requests.post(LLM_BASE_URL, json=payload, timeout=4)
-        resp.raise_for_status()
+
+        openai_key = os.getenv("OPENAI_API_KEY")
+        api_base = os.getenv("API_BASE_URL") or (
+            "https://api.openai.com" if openai_key else "http://localhost:11434"
+        )
+        endpoint = "/v1/chat/completions"
+        url = f"{api_base}{endpoint}"
+
+        headers = {"Content-Type": "application/json"}
+        if openai_key:
+            headers["Authorization"] = f"Bearer {openai_key}"
+
+        resp = requests.post(url, json=payload, timeout=4, headers=headers)
+        if resp.status_code >= 400:
+            raise RuntimeError(f"LLM error {resp.status_code}: {resp.text}")
         return resp.json()
 
     def route(self, text: str) -> Tuple[str | None, Dict[str, Any], str]:
