@@ -6,15 +6,15 @@ _REGISTRY = {}
 
 def tool(fn):
     """Decorator registering a callable as an assistant tool."""
-    _REGISTRY[fn.__name__] = {
-        "sig": str(inspect.signature(fn)),
-        "doc": inspect.getdoc(fn) or "",
-        "callable": fn,
-    }
-
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
         return fn(*args, **kwargs)
+
+    _REGISTRY[fn.__name__] = {
+        "sig": str(inspect.signature(fn)),
+        "doc": inspect.getdoc(fn) or "",
+        "callable": wrapper,
+    }
 
     return wrapper
 

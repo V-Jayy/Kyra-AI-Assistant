@@ -1,9 +1,9 @@
 # Kyra-AI-Assistant
 
-This project contains a simple offline voice assistant and a more modular
-prototype. The original script `nova_assistant.py` listens for **"Hey Nova"**
-and executes a few basic commands. The new `assistant/` package provides a
-more extensible assistant called **Luna** using a wake phrase "Hey Luna".
+This project now provides a lightweight voice assistant called **Aurora**.
+Configuration lives in `config.py` where you can change the wake word,
+default TTS voice and other options.  Tools are pure functions in
+`tools.py` and the main event loop is implemented in `assistant.py`.
 
 ## Requirements
 
@@ -25,8 +25,10 @@ the project directory.
 Run the assistant:
 
 ```bash
-python -m assistant.main --debug --voice en-us-kathleen-low
+python assistant.py
 ```
 
-Say **"Hey Luna"** followed by a polite request. Luna introspects its tools
-from `capabilities.json` and chooses the right action.
+Say the wake phrase (default **"Hey Aurora"**) and then a command such as
+"open youtube.com".  When `DEBUG` is enabled a transcript window will
+appear.  To add new tools simply create a function in `tools.py` and
+register it in the `ALL_TOOLS` dictionary.
