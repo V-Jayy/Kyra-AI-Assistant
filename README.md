@@ -34,3 +34,6 @@ Run `python -m app.scenarios` to execute the CSV-driven self test harness.
 The `kill_process` tool can force quit applications by process name, e.g.
 "Close Discord" will terminate `discord.exe` on Windows. On Windows, the
 `.exe` extension is added automatically if omitted.
+
+Use `install_cmd` to copy the assistant to a directory on your `%PATH%` so you
+can run it via the `Kyra` command. `uninstall_cmd` removes the files again.

@@ -16,6 +16,8 @@ __all__ = [
     "kill_process",
     "search_files",
     "play_music",
+    "install_cmd",
+    "uninstall_cmd",
     "list_tools",
     "get_openai_tools",
     "validate_tool_args",
@@ -53,6 +55,14 @@ TOOL_SCHEMAS: List[Dict[str, Any]] = [
     {
         "name": "play_music",
         "parameters": {"type": "object", "required": ["song"]},
+    },
+    {
+        "name": "install_cmd",
+        "parameters": {"type": "object", "required": []},
+    },
+    {
+        "name": "uninstall_cmd",
+        "parameters": {"type": "object", "required": []},
     },
 ]
 
@@ -198,3 +208,58 @@ def kill_process(name: str) -> Tuple[bool, str]:
         return True, f"Closed {name}"
     except Exception as exc:  # pragma: no cover - platform dependent
         return False, str(exc)
+
+
+@tool
+def install_cmd() -> Tuple[bool, str]:
+    """Install Kyra as a `Kyra` command available in CMD."""
+    import shutil
+    import sys
+
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    for p in os.getenv("PATH", "").split(os.pathsep):
+        if not p:
+            continue
+        if not os.access(p, os.W_OK):
+            continue
+        try:
+            dest = os.path.join(p, "Kyra")
+            shutil.copytree(root, dest, dirs_exist_ok=True)
+            script = os.path.join(p, "Kyra.cmd" if os.name == "nt" else "Kyra")
+            if os.name == "nt":
+                content = f"@echo off\n{sys.executable} \"%~dp0Kyra/app/assistant.py\" %*"
+            else:
+                content = f"#!/bin/sh\n{sys.executable} \"$(dirname \"$0\")/Kyra/app/assistant.py\" \"$@\""
+            with open(script, "w", newline="") as f:
+                f.write(content)
+            if os.name != "nt":
+                os.chmod(script, 0o755)
+            return True, f"Installed to {p}"
+        except Exception:
+            continue
+    return False, "No writable directory in PATH"
+
+
+@tool
+def uninstall_cmd() -> Tuple[bool, str]:
+    """Remove the `Kyra` command installed by install_cmd."""
+    import shutil
+
+    success = False
+    for p in os.getenv("PATH", "").split(os.pathsep):
+        if not p:
+            continue
+        try:
+            target_dir = os.path.join(p, "Kyra")
+            if os.path.isdir(target_dir):
+                shutil.rmtree(target_dir)
+                success = True
+            script = os.path.join(p, "Kyra.cmd" if os.name == "nt" else "Kyra")
+            if os.path.exists(script):
+                os.remove(script)
+                success = True
+        except Exception:
+            continue
+    if success:
+        return True, "Uninstalled"
+    return False, "Nothing removed"
