@@ -1,32 +1,30 @@
-# Kyra-AI-Assistant
+# Aurora Assistant
 
-This project contains a simple offline voice assistant and a more modular
-prototype. The original script `nova_assistant.py` listens for **"Hey Nova"**
-and executes a few basic commands. The new `assistant/` package provides a
-more extensible assistant called **Luna** using a wake phrase "Hey Luna".
+This project provides an offline voice assistant powered by local models.
 
-## Requirements
+## Setup
 
-- Python 3.10+
-- [Vosk](https://alphacephei.com/vosk/) offline speech recognition model
-- Additional Python packages listed in `assistant/requirements.txt`
+1. **Build `llama.cpp`**
+   ```bash
+   git clone https://github.com/ggerganov/llama.cpp
+   cd llama.cpp && make
+   ```
+2. **Download a GGUF model** (e.g. `mistral-7b-instruct-v0.2.Q4_K_M.gguf`)
+   ```bash
+   wget https://.../mistral.gguf -O models/mistral.gguf
+   ```
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. **Download the Vosk model**
+   ```bash
+   wget https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
+   unzip vosk-model-small-en-us-0.15.zip
+   ```
+5. **Run the assistant**
+   ```bash
+   python -m app.assistant --mode voice
+   ```
 
-Install dependencies with:
-
-```bash
-pip install -r assistant/requirements.txt
-```
-
-Download the Vosk model (e.g. `vosk-model-small-en-us-0.15`) and extract it into
-the project directory.
-
-## Usage
-
-Run the assistant:
-
-```bash
-python -m assistant.main --debug --voice en-us-kathleen-low
-```
-
-Say **"Hey Luna"** followed by a polite request. Luna introspects its tools
-from `capabilities.json` and chooses the right action.
+Run `python -m app.scenarios` to execute the CSV-driven self test harness.

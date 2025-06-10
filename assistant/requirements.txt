@@ -1,8 +1,0 @@
-vosk
-piper-tts
-llama-cpp-python
-rapidfuzz==3.*
-
-PyYAML
-scikit-learn
-joblib

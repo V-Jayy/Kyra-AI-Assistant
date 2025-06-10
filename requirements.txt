@@ -1,0 +1,5 @@
+vosk
+requests
+pydantic
+pyttsx3
+rapidfuzz
