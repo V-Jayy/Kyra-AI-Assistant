@@ -126,9 +126,9 @@ def launch_app(path: str) -> Tuple[bool, str]:
 
 
 @tool
-def search_files(pattern: str, root: str = "~") -> Tuple[bool, str]:
+def search_files(directory: str, pattern: str, **_unused: Any) -> Tuple[bool, str]:
     """Search for files under a directory."""
-    root = os.path.expanduser(root)
+    root = os.path.expanduser(directory)
     glob_pattern = derive_glob_from_phrase(pattern)
     matches: List[str] = []
     for dirpath, _dirs, files in os.walk(root):
