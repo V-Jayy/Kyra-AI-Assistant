@@ -4,7 +4,7 @@ import argparse
 import asyncio
 import json
 import os
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional, Dict, Any
 
 from gtts import gTTS
 from tempfile import NamedTemporaryFile
@@ -12,36 +12,68 @@ import pyaudio
 from playsound import playsound
 from vosk import Model, KaldiRecognizer
 import logging
+import re
 
 from core.config import DEBUG, WAKE_WORD
 from core.intent_router import IntentRouter
 from core.transcript import Transcript
+
 from core.tools import _REGISTRY
+
+ROUTER_PROMPT = """
+You are an intent-router for a local voice assistant.
+Return **only** this JSON schema — no prose, no code fences:
+
+{
+  "function": {
+    "name": "<one_of_the_function_names_provided>",
+    "arguments": { ... }
+  }
+}
+
+If no function fits, respond with:
+{ "function": null }
+"""
 
 
 logger = logging.getLogger(__name__)
 
 
-def summarise_router_reply(reply: str) -> str:
-    """Return a short sentence for TTS or fallback message."""
+def _safe_json_load(raw: str) -> Dict[str, Any] | None:
+    """
+    Try to extract and load the first JSON object found in *raw*.
+    Returns None on failure.
+    """
     try:
-        obj = json.loads(reply)
-    except Exception:
-        return "I was unable to get that."
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", raw, re.S)
+        if match:
+            try:
+                return json.loads(match.group())
+            except json.JSONDecodeError:
+                return None
+    return None
 
-    name = obj.get("function", {}).get("name")
-    args = obj.get("arguments", {})
 
-    if name == "open_website":
-        url = args.get("url", "")
-        site = url.split("//")[-1].split("/")[0] or url
-        return f"Opening {site}"
-    elif name == "launch_app":
-        return f"Launching {args.get('app', 'application')}"
-    elif name == "search_files":
-        return "Searching files"
+def summarise_router_reply(reply: str | Dict[str, Any]) -> Optional[str]:
+    """
+    Returns the chosen function's name (str) or None.
+    Works with both the new nested schema and the legacy flat schema.
+    Never raises JSONDecodeError or AttributeError.
+    """
+    if isinstance(reply, dict):
+        obj = reply
     else:
-        return "I was unable to get that."
+        obj = _safe_json_load(reply) or {}
+
+    func = obj.get("function")
+
+    if isinstance(func, dict):
+        return func.get("name")
+    elif isinstance(func, str):
+        return func
+    return None
 
 
 async def microphone_chunks() -> AsyncGenerator[bytes, None]:
@@ -120,7 +152,8 @@ async def voice_loop(
             else:
                 reply = args.get("content", "I didn't understand")
                 transcript.log("BOT", reply)
-                spoken = summarise_router_reply(reply)
+                name = summarise_router_reply(reply)
+                spoken = name if name else "Sorry, I didn't catch a valid command."
                 speak(spoken, tts)
 
 
@@ -154,6 +187,7 @@ def main() -> None:
 
     transcript = Transcript(DEBUG)
     router = IntentRouter()
+    router.system_prompt = ROUTER_PROMPT
 
     if args.text:
         query = " ".join(args.text)
