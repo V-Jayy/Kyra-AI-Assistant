@@ -1,0 +1,6 @@
+vosk
+pyttsx3
+PyYAML
+rapidfuzz
+scikit-learn
+joblib
