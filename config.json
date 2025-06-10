@@ -1,0 +1,5 @@
+{
+  "wake_word": "Hey Aurora",
+  "debug": true,
+  "tts_engine": "gtts"
+}

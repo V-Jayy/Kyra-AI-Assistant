@@ -4,13 +4,17 @@ import inspect
 import functools
 import fnmatch
 from typing import Callable, Dict, Tuple, Any, List
+import re
+import urllib.parse
 
 from .utils import derive_glob_from_phrase
 
 __all__ = [
     "open_website",
+    "sanitize_domain",
     "launch_app",
     "search_files",
+    "play_music",
     "list_tools",
     "get_openai_tools",
     "validate_tool_args",
@@ -40,6 +44,10 @@ TOOL_SCHEMAS: List[Dict[str, Any]] = [
     {
         "name": "search_files",
         "parameters": {"type": "object", "required": ["directory", "pattern"]},
+    },
+    {
+        "name": "play_music",
+        "parameters": {"type": "object", "required": ["song"]},
     },
 ]
 
@@ -100,14 +108,43 @@ import subprocess
 import webbrowser
 
 
+def sanitize_domain(text: str) -> str:
+    """Return a clean domain or empty string if *text* is not valid."""
+    text = text.strip().lower()
+    text = re.sub(r"https?://", "", text)
+    text = re.sub(r"^www\.", "", text)
+    text = text.split()[0]
+    text = text.split("/")[0]
+    if re.match(r"^[a-z0-9.-]+\.[a-z]{2,}$", text):
+        return text
+    return ""
+
+
 @tool
 def open_website(url: str) -> Tuple[bool, str]:
     """Open a website in the default browser."""
-    if not url.startswith("http"):
-        url = "https://" + url
+    clean = sanitize_domain(url)
+    if clean:
+        full_url = "https://" + clean if not clean.startswith("http") else clean
+    else:
+        query = urllib.parse.quote(url.strip())
+        full_url = f"https://www.google.com/search?q={query}"
     try:
-        webbrowser.open_new_tab(url)
-        return True, f"Opening {url}"
+        webbrowser.open_new_tab(full_url)
+        action = "Opening" if clean else "Searching for"
+        return True, f"{action} {full_url}"
+    except Exception as exc:  # pragma: no cover - platform dependent
+        return False, str(exc)
+
+
+@tool
+def play_music(song: str) -> Tuple[bool, str]:
+    """Open YouTube search results for the given *song*."""
+    query = urllib.parse.quote(song)
+    url = f"https://www.youtube.com/results?search_query={query}"
+    try:
+        webbrowser.open(url)
+        return True, f"Playing {song}"
     except Exception as exc:  # pragma: no cover - platform dependent
         return False, str(exc)
 
