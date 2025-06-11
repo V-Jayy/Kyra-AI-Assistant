@@ -1,6 +1,6 @@
 {
   "wake_word": "Hey Aurora",
   "debug": true,
-  "tts_engine": "gtts"
+  "tts_engine": "piper"
   ,"conversational_mode": true
 }

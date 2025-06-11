@@ -75,6 +75,14 @@ async def safe_speak(text: str) -> None:
     async def _run() -> None:
         if DEBUG:
             logger.debug("TTS: %s", text)
+        if PiperVoice and sd and np:
+            try:
+                await _piper_play(text, PIPER_MODEL_PATH)
+                return
+            except Exception as exc:  # pragma: no cover
+                logger.error("piper playback failed: %s", exc)
+                if not TTS_FALLBACK:
+                    return
         try:
             await _edge_play(text, VOICE)
             return
@@ -88,11 +96,5 @@ async def safe_speak(text: str) -> None:
                 return
             except Exception as exc:  # pragma: no cover - windows only
                 logger.error("sapi failed: %s", exc)
-        if PiperVoice and sd and np:
-            try:
-                await _piper_play(text, PIPER_MODEL_PATH)
-                return
-            except Exception as exc:  # pragma: no cover
-                logger.error("piper playback failed: %s", exc)
 
     asyncio.create_task(_run())

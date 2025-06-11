@@ -28,7 +28,6 @@ from app.constants import (
 if not DEBUG:
     os.environ.setdefault("VOSK_LOG_LEVEL", "-1")
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("gtts").setLevel(logging.WARNING)
 from core.intent_router import IntentRouter
 from core.transcript import Transcript
 
