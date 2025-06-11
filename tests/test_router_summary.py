@@ -1,9 +1,6 @@
 import sys
 import types
 
-# Stub pyaudio so importing assistant works without system deps
-sys.modules["pyaudio"] = types.SimpleNamespace(PyAudio=lambda: None, paInt16=0)
-
 from app.assistant import summarise_router_reply  # noqa: E402
 
 
