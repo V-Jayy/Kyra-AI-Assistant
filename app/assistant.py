@@ -4,6 +4,8 @@ import argparse
 import asyncio
 import json
 import os
+import random
+import time
 from typing import AsyncGenerator, Optional, Dict, Any
 
 import pyaudio
@@ -15,7 +17,13 @@ import urllib.parse
 import webbrowser
 import requests
 
-from app.constants import DEBUG, WAKE_WORD, WAKE_WORD_ALIASES, VOSK_MODEL_PATH
+from app.constants import (
+    DEBUG,
+    CONVERSATIONAL_MODE,
+    WAKE_WORD,
+    WAKE_WORD_ALIASES,
+    VOSK_MODEL_PATH,
+)
 
 if not DEBUG:
     os.environ.setdefault("VOSK_LOG_LEVEL", "-1")
@@ -155,6 +163,21 @@ def _fix_wake_word(text: str) -> str:
     return re.sub(pattern, WAKE_WORD, text, flags=re.I)
 
 
+_SMALL_TALK = [
+    (re.compile(r"\b(?:are you there\??|can we talk\??|just chat with me)\b", re.I), [
+        "Sure, I'm here.",
+        "Yes, I'm listening!",
+    ]),
+]
+
+_CASUAL_FALLBACKS = [
+    "Sure, I'm here.",
+    "Yes, I'm listening!",
+    "Let's just chat.",
+    "I'm here if you need me.",
+]
+
+
 async def microphone_chunks() -> AsyncGenerator[bytes, None]:
     q: asyncio.Queue[bytes] = asyncio.Queue()
     loop = asyncio.get_running_loop()
@@ -174,7 +197,29 @@ async def microphone_chunks() -> AsyncGenerator[bytes, None]:
             return
         stream.start_stream()
         while True:
-            data = stream.read(4000, exception_on_overflow=False)
+            try:
+                data = stream.read(4000, exception_on_overflow=False)
+            except OSError as exc:
+                logger.error(
+                    "Mic read failed: %s. Check device index or reinitialise audio input.",
+                    exc,
+                )
+                try:
+                    stream.stop_stream()
+                    stream.close()
+                    stream = pa.open(
+                        format=pyaudio.paInt16,
+                        channels=1,
+                        rate=16000,
+                        input=True,
+                        frames_per_buffer=8000,
+                    )
+                    stream.start_stream()
+                except Exception as exc2:
+                    logger.error("Reopening mic failed: %s", exc2)
+                    time.sleep(1)
+                    continue
+                continue
             asyncio.run_coroutine_threadsafe(q.put(data), loop)
 
     import threading
@@ -199,24 +244,42 @@ def speak(text: str, enable: bool) -> None:
 
 def handle_text(text: str, router: IntentRouter, tts: bool, transcript: Transcript) -> None:
     """Map *text* to a tool either via fuzzy rules or the LLM."""
+    for pattern, replies in _SMALL_TALK:
+        if pattern.search(text):
+            resp = random.choice(replies)
+            transcript.log("BOT", resp)
+            speak(resp, tts)
+            return
     act = fuzzy_match(text)
     if act:
         if act.name == "repeat":
-            speak("Please repeat that", tts)
+            resp = random.choice(_CASUAL_FALLBACKS)
+            transcript.log("BOT", resp)
+            speak(resp, tts)
             return
         if act.name in _REGISTRY:
+            if DEBUG:
+                transcript.log("FUNC", act.name)
             ok, msg = _REGISTRY[act.name]["callable"](**act.args)
             transcript.log("BOT", msg)
             speak(msg, tts)
             return
 
-    name, args_route, _ = router.route(text)
+    name, args_route, intent = router.route(text)
+    if DEBUG:
+        transcript.log("INTENT", intent)
     if name and name in _REGISTRY:
+        if DEBUG:
+            transcript.log("FUNC", name)
         ok, msg = _REGISTRY[name]["callable"](**args_route)
         transcript.log("BOT", msg)
         speak(msg, tts)
     else:
-        reply = args_route.get("content", "I didn't understand")
+        reply = args_route.get("content")
+        if not reply and CONVERSATIONAL_MODE:
+            reply = random.choice(_CASUAL_FALLBACKS)
+        elif not reply:
+            reply = "I didn't understand"
         transcript.log("BOT", reply)
         speak(reply, tts)
 
@@ -233,6 +296,8 @@ async def voice_loop(
         if recognizer.AcceptWaveform(chunk):
             res = json.loads(recognizer.Result())
             text = res.get("text", "").strip()
+            if DEBUG:
+                transcript.log("RAW", text)
             text = _fix_wake_word(text)
             if not text:
                 continue

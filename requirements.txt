@@ -6,3 +6,4 @@ pyttsx3
 rapidfuzz>=3
 rich
 jsonschema
+comtypes; platform_system=='Windows'
