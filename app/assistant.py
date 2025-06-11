@@ -15,7 +15,7 @@ import urllib.parse
 import webbrowser
 import requests
 
-from app.constants import DEBUG, WAKE_WORD, VOSK_MODEL_PATH
+from app.constants import DEBUG, WAKE_WORD, WAKE_WORD_ALIASES, VOSK_MODEL_PATH
 
 if not DEBUG:
     os.environ.setdefault("VOSK_LOG_LEVEL", "-1")
@@ -150,7 +150,9 @@ def summarise_router_reply(reply: str | Dict[str, Any]) -> str:
 
 def _fix_wake_word(text: str) -> str:
     """Normalize common mis-hearings of the wake word."""
-    return re.sub(r"\b(kira|kiera|keira|kiara)\b", WAKE_WORD, text, flags=re.I)
+    aliases = "|".join(re.escape(w) for w in WAKE_WORD_ALIASES)
+    pattern = rf"\b(?:{aliases})\b"
+    return re.sub(pattern, WAKE_WORD, text, flags=re.I)
 
 
 async def microphone_chunks() -> AsyncGenerator[bytes, None]:
