@@ -1,88 +1,34 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
-import os
-from tempfile import NamedTemporaryFile
+from pathlib import Path
 
 from edge_tts import Communicate
+import simpleaudio
 
-try:  # pragma: no cover - optional
-    import comtypes.client as cc
-except Exception:
-    cc = None
-
-try:  # pragma: no cover - optional dep
-    import pyttsx3
-except Exception:  # pragma: no cover - environment may lack engines
-    pyttsx3 = None
-
-from .constants import VOICE, TTS_FALLBACK, DEBUG
+from .config import VOICE_NAME, VOICE_RATE, AUDIO_CACHE
 
 logger = logging.getLogger(__name__)
 
-
-async def _edge_play(text: str, voice: str) -> None:
-    communicate = Communicate(text, voice)
-    with NamedTemporaryFile(delete=False, suffix=".mp3") as f:
-        await communicate.save(f.name)
-        path = f.name
-    if not os.path.exists(path):
-        logger.error("TTS output missing: %s", path)
-        return
-    if os.name == "nt":
-        os.startfile(path)  # type: ignore[attr-defined]
-    elif os.system(f"which xdg-open > /dev/null 2>&1") == 0:
-        asyncio.create_subprocess_exec("xdg-open", path)
-    elif os.system(f"which afplay > /dev/null 2>&1") == 0:
-        await asyncio.create_subprocess_exec("afplay", path)
-    else:
-        logger.warning("No audio player available to play %s", path)
-    await asyncio.sleep(0)  # let playback start
+_CACHE = Path(AUDIO_CACHE)
+_CACHE.mkdir(exist_ok=True)
 
 
-async def _pyttsx3_play(text: str) -> None:
-    if pyttsx3 is None:  # pragma: no cover - optional
-        raise RuntimeError("pyttsx3 unavailable")
-    engine = pyttsx3.init()
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, engine.say, text)
-    await loop.run_in_executor(None, engine.runAndWait)
-
-
-async def _sapi_play(text: str) -> None:
-    if cc is None:  # pragma: no cover - optional
-        raise RuntimeError("comtypes unavailable")
-    speaker = cc.CreateObject("SAPI.SpVoice")
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, speaker.Speak, text)
-
-
-async def safe_speak(text: str) -> None:
+async def speak(text: str) -> None:
+    """Synthesize *text* with Edge TTS and play it back."""
     text = (text or "").strip()
-    if text == "":
-        raise ValueError("empty utterance")
-
-    async def _run() -> None:
-        if DEBUG:
-            logger.debug("TTS: %s", text)
-        try:
-            await _edge_play(text, VOICE)
-            return
-        except Exception as exc:
-            logger.warning("edge-tts failed: %s", exc)
-            if not TTS_FALLBACK:
-                return
-        if os.name == "nt":
-            try:
-                await _sapi_play(text)
-                return
-            except Exception as exc:  # pragma: no cover - windows only
-                logger.error("sapi failed: %s", exc)
-        if pyttsx3:
-            try:
-                await _pyttsx3_play(text)
-            except Exception as exc:  # pragma: no cover
-                logger.error("pyttsx3 failed: %s", exc)
-
-    asyncio.create_task(_run())
+    if not text:
+        return
+    h = hashlib.sha1(text.encode("utf-8")).hexdigest()
+    path = _CACHE / f"{h}.wav"
+    if not path.exists():
+        logger.info("TTS synth %s", path)
+        comm = Communicate(text, VOICE_NAME, rate=VOICE_RATE)
+        await comm.save(str(path))
+    logger.info("TTS play %s", path)
+    wave = simpleaudio.WaveObject.from_wave_file(str(path))
+    play = wave.play()
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, play.wait_done)

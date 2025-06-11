@@ -8,8 +8,7 @@ import random
 import time
 from typing import AsyncGenerator, Optional, Dict, Any
 
-import pyaudio
-from app.tts import safe_speak
+from app.tts import speak as tts_speak
 from vosk import Model, KaldiRecognizer
 import logging
 import re
@@ -31,6 +30,7 @@ if not DEBUG:
     logging.getLogger("gtts").setLevel(logging.WARNING)
 from core.intent_router import IntentRouter
 from core.transcript import Transcript
+from app.config import VOICE_NAME, VOICE_RATE
 
 from core.tools import _REGISTRY, tool, _TOOL_SCHEMA_MAP
 from app.intent_router import fuzzy_match, Action
@@ -163,6 +163,13 @@ def _fix_wake_word(text: str) -> str:
     return re.sub(pattern, WAKE_WORD, text, flags=re.I)
 
 
+_STOP_WORDS = re.compile(r"^(?:the|a|an|process)\s+", re.I)
+
+
+def _clean_arg(arg: str) -> str:
+    return _STOP_WORDS.sub("", arg.strip())
+
+
 _SMALL_TALK = [
     (re.compile(r"\b(?:are you there\??|can we talk\??|just chat with me)\b", re.I), [
         "Sure, I'm here.",
@@ -183,6 +190,7 @@ async def microphone_chunks() -> AsyncGenerator[bytes, None]:
     loop = asyncio.get_running_loop()
 
     def _worker() -> None:
+        import pyaudio
         pa = pyaudio.PyAudio()
         try:
             stream = pa.open(
@@ -237,7 +245,7 @@ def speak(text: str, enable: bool) -> None:
         return
 
     if enable:
-        asyncio.create_task(safe_speak(text))
+        asyncio.create_task(tts_speak(text))
     else:
         print(f"Assistant: {text}")
 
@@ -258,8 +266,12 @@ def handle_text(text: str, router: IntentRouter, tts: bool, transcript: Transcri
             speak(resp, tts)
             return
         if act.name in _REGISTRY:
+            if act.name == "kill_process":
+                act.args["name"] = _clean_arg(act.args.get("name", ""))
+            if act.name == "open_website":
+                act.args["url"] = _clean_arg(act.args.get("url", ""))
             if DEBUG:
-                transcript.log("FUNC", act.name)
+                transcript.log("FUNC", f"{act.name} {act.args} | raw='{text}'")
             ok, msg = _REGISTRY[act.name]["callable"](**act.args)
             transcript.log("BOT", msg)
             speak(msg, tts)
@@ -269,11 +281,19 @@ def handle_text(text: str, router: IntentRouter, tts: bool, transcript: Transcri
     if DEBUG:
         transcript.log("INTENT", intent)
     if name and name in _REGISTRY:
-        if DEBUG:
-            transcript.log("FUNC", name)
-        ok, msg = _REGISTRY[name]["callable"](**args_route)
-        transcript.log("BOT", msg)
-        speak(msg, tts)
+        if name == "kill_process":
+            args_route["name"] = _clean_arg(args_route.get("name", ""))
+        if name == "open_website":
+            args_route["url"] = _clean_arg(args_route.get("url", ""))
+            if not args_route["url"]:
+                name = None
+        if name and DEBUG:
+            transcript.log("FUNC", f"{name} {args_route} | raw='{text}'")
+        if name:
+            ok, msg = _REGISTRY[name]["callable"](**args_route)
+            transcript.log("BOT", msg)
+            speak(msg, tts)
+            return
     else:
         reply = args_route.get("content")
         if not reply and CONVERSATIONAL_MODE:
@@ -292,12 +312,21 @@ async def voice_loop(
     model = Model(model_path)
     recognizer = KaldiRecognizer(model, 16000)
     transcript.log("BOT", "Ready")
+    last_voice = time.monotonic()
+    awaiting = False
+    buffer = ""
+    last_part = ""
     async for chunk in microphone_chunks():
         if recognizer.AcceptWaveform(chunk):
             res = json.loads(recognizer.Result())
             text = res.get("text", "").strip()
-            if DEBUG:
+            if DEBUG and text:
                 transcript.log("RAW", text)
+                if last_part:
+                    transcript.log("PART", "")
+            awaiting = False
+            buffer = ""
+            last_part = ""
             text = _fix_wake_word(text)
             if not text:
                 continue
@@ -307,10 +336,33 @@ async def voice_loop(
             transcript.log("USER", cmd)
             handle_text(cmd, router, tts, transcript)
         else:
-            if DEBUG:
-                part = json.loads(recognizer.PartialResult()).get("partial", "")
-                if part:
+            part = json.loads(recognizer.PartialResult()).get("partial", "")
+            now = time.monotonic()
+            if part:
+                buffer = part
+                awaiting = WAKE_WORD.lower() in part.lower() or awaiting
+                last_voice = now
+                last_part = part
+                if DEBUG:
                     transcript.log("PART", part)
+            elif awaiting and now - last_voice > 0.3:
+                res = json.loads(recognizer.FinalResult())
+                text = (buffer + " " + res.get("text", "")).strip()
+                if DEBUG:
+                    transcript.log("RAW", text)
+                    if last_part:
+                        transcript.log("PART", "")
+                awaiting = False
+                buffer = ""
+                last_part = ""
+                text = _fix_wake_word(text)
+                if not text:
+                    continue
+                if not text.lower().startswith(WAKE_WORD.lower()):
+                    continue
+                cmd = text[len(WAKE_WORD):].strip()
+                transcript.log("USER", cmd)
+                handle_text(cmd, router, tts, transcript)
 
 
 async def console_loop(router: IntentRouter, transcript: Transcript) -> None:
@@ -353,6 +405,7 @@ def main() -> None:
         return
 
     if args.mode == "voice":
+        print(f"TTS backend: Edge | Voice: {VOICE_NAME} | Rate: {VOICE_RATE}")
         asyncio.run(voice_loop(router, args.model_path, True, transcript))
     else:
         asyncio.run(console_loop(router, transcript))

@@ -120,7 +120,10 @@ class IntentRouter:
                 return None, {}, "unknown"
             call = calls[0]
             name = call.get("function", {}).get("name")
-            args_json = call.get("function", {}).get("arguments", "{}")
+            args_json = call.get("function", {}).get("arguments", "")
+            if not name or not args_json:
+                content = msg.get("content", "")
+                return None, {"content": content}, "chat"
             try:
                 args = json.loads(args_json)
             except json.JSONDecodeError:
