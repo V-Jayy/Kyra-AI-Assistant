@@ -168,12 +168,15 @@ def _fix_wake_word(text: str) -> str:
 
 
 _STOP_WORDS = re.compile(
-    r"^(?:the|a|an|process|explorer(?: to)?|explore(?: to)?)\s+", re.I
+    r"^(?:the|a|an|process|folder|directory|explorer(?: to)?|explore(?: to)?)\s+",
+    re.I,
 )
 
 
 def _clean_arg(arg: str) -> str:
-    return _STOP_WORDS.sub("", arg.strip())
+    text = _STOP_WORDS.sub("", arg.strip())
+    text = re.sub(r"\bdesks? top\b", "desktop", text, flags=re.I)
+    return text
 
 
 _SMALL_TALK = [

@@ -132,6 +132,15 @@ import webbrowser
 import pathlib
 import time
 
+COMMON_DIRS = {
+    "desktop": str(pathlib.Path.home() / "Desktop"),
+    "downloads": str(pathlib.Path.home() / "Downloads"),
+    "documents": str(pathlib.Path.home() / "Documents"),
+    "pictures": str(pathlib.Path.home() / "Pictures"),
+    "music": str(pathlib.Path.home() / "Music"),
+    "videos": str(pathlib.Path.home() / "Videos"),
+}
+
 
 def sanitize_domain(text: str) -> str:
     """Return a clean domain or empty string if *text* is not valid."""
@@ -227,7 +236,9 @@ def kill_process(name: str) -> Tuple[bool, str]:
 @tool
 def open_explorer(path: str) -> Tuple[bool, str]:
     """Open a file or directory in the system file explorer."""
-    target = os.path.expanduser(path)
+    key = path.strip().lower()
+    target = COMMON_DIRS.get(key, path)
+    target = os.path.expanduser(target)
     if not os.path.exists(target):
         return False, f"{target} not found"
     try:
