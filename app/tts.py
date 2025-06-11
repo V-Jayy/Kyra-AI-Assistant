@@ -12,6 +12,7 @@ try:  # pragma: no cover - optional
 except Exception:
     cc = None
 
+
 try:  # pragma: no cover - optional dep
     import pyttsx3
 except Exception:  # pragma: no cover - environment may lack engines
@@ -41,6 +42,14 @@ async def _edge_play(text: str, voice: str) -> None:
     await asyncio.sleep(0)  # let playback start
 
 
+async def _sapi_play(text: str) -> None:
+    if cc is None:  # pragma: no cover - optional
+        raise RuntimeError("comtypes unavailable")
+    speaker = cc.CreateObject("SAPI.SpVoice")
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, speaker.Speak, text)
+
+
 async def _pyttsx3_play(text: str) -> None:
     if pyttsx3 is None:  # pragma: no cover - optional
         raise RuntimeError("pyttsx3 unavailable")
@@ -48,14 +57,6 @@ async def _pyttsx3_play(text: str) -> None:
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, engine.say, text)
     await loop.run_in_executor(None, engine.runAndWait)
-
-
-async def _sapi_play(text: str) -> None:
-    if cc is None:  # pragma: no cover - optional
-        raise RuntimeError("comtypes unavailable")
-    speaker = cc.CreateObject("SAPI.SpVoice")
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, speaker.Speak, text)
 
 
 async def safe_speak(text: str) -> None:
