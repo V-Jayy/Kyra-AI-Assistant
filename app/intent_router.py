@@ -14,6 +14,14 @@ class Action:
 
 
 _PATTERNS = {
+    "open_explorer": (
+        re.compile(
+            r"(?:open|show)(?: .{0,20}?explor(?:er|e)(?: to)?)? (?P<path>(?:[A-Za-z]:|~|/).+|.+(?:folder|directory).*|(?:desktop|downloads|documents|pictures|music|videos)(?:\b|$))",
+            re.I,
+        ),
+        "path",
+    ),
+    "create_note": (re.compile(r"(?:note|remember) (?P<content>.+)", re.I), "content"),
     "open_website": (re.compile(r"(?:open|visit|go to) (?P<url>.+)", re.I), "url"),
     "launch_app": (re.compile(r"(?:launch|open|start) (?P<exe>.+)", re.I), "app"),
     "play_song": (re.compile(r"(?:play|listen to) (?P<song>.+)", re.I), "query"),
@@ -22,6 +30,8 @@ _PATTERNS = {
 }
 
 _CHOICES = {
+    "open_explorer": "open folder",
+    "create_note": "create note",
     "open_website": "open website",
     "launch_app": "launch app",
     "play_song": "play song",

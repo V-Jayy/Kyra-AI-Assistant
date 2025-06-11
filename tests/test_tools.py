@@ -15,3 +15,35 @@ def test_derive_glob_from_phrase():
     assert pattern == "*.pdf"
     pattern2 = tools.derive_glob_from_phrase("my notes")
     assert pattern2 == "*my*notes*"
+
+
+def test_open_explorer(monkeypatch, tmp_path):
+    opened = []
+    monkeypatch.setattr(tools.webbrowser, "open", lambda url: opened.append(url) or True)
+    ok, msg = tools.open_explorer(str(tmp_path))
+    assert ok
+    assert opened
+
+
+def test_open_explorer_common_dir(monkeypatch, tmp_path):
+    opened = []
+    monkeypatch.setattr(tools.webbrowser, "open", lambda url: opened.append(url) or True)
+    monkeypatch.setitem(tools.COMMON_DIRS, "desktop", str(tmp_path))
+    ok, msg = tools.open_explorer("desktop")
+    assert ok
+    assert opened
+
+
+def test_clean_arg_explorer():
+    from app.assistant import _clean_arg
+
+    assert _clean_arg("explorer to desktop") == "desktop"
+    assert _clean_arg("folder desk top") == "desktop"
+
+
+def test_create_note(tmp_path):
+    ok, msg = tools.create_note("buy milk", directory=str(tmp_path))
+    assert ok
+    files = list(tmp_path.glob("note_*.txt"))
+    assert files
+    assert files[0].read_text().strip() == "buy milk"
