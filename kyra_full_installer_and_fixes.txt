@@ -13,6 +13,6 @@ Batch files provided:
 Python fixes include:
 - Graceful handling of microphone errors when starting audio capture.
 - Unified logging of user input and assistant response for both text and voice modes.
-- Lower log verbosity for Vosk, urllib3 and gTTS unless debug is enabled.
+- Lower log verbosity for Vosk, urllib3 and Microsoft Edge-TTS neural voices unless debug is enabled.
 - Simplified play_music fallback to open a YouTube search when no direct URL is given.
 - Text-to-speech now reports failures and cleans up temporary files.

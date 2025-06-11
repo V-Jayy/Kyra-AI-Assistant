@@ -1,7 +1,7 @@
 vosk
 requests
 pydantic
-edge-tts
+edge-tts==1.6.2
 pyttsx3
 rapidfuzz>=3
 rich

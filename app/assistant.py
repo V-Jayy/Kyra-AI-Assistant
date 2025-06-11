@@ -6,10 +6,12 @@ import json
 import os
 import random
 import time
-from typing import AsyncGenerator, Optional, Dict, Any
+from typing import AsyncGenerator, Dict, Any
 
 import pyaudio
-from app.tts import safe_speak
+import edge_tts
+import tempfile
+from pathlib import Path
 from vosk import Model, KaldiRecognizer
 import logging
 import re
@@ -28,12 +30,15 @@ from app.constants import (
 if not DEBUG:
     os.environ.setdefault("VOSK_LOG_LEVEL", "-1")
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("gtts").setLevel(logging.WARNING)
 from core.intent_router import IntentRouter
 from core.transcript import Transcript
 
 from core.tools import _REGISTRY, tool, _TOOL_SCHEMA_MAP
-from app.intent_router import fuzzy_match, Action
+from app.intent_router import fuzzy_match
+
+CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.json"
+with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+    CONFIG = json.load(f)
 
 ROUTER_PROMPT = """
 You are an intent‑router for a local voice assistant.
@@ -230,16 +235,35 @@ async def microphone_chunks() -> AsyncGenerator[bytes, None]:
         yield data
 
 
+async def _edge_tts(text: str, voice: str) -> Path:
+    # Generates WAV to a temp file and returns the file path
+    outfile = Path(tempfile.mktemp(suffix=".wav"))
+    communicate = edge_tts.Communicate(text, voice, rate="+0%", volume="+0%")
+    await communicate.save(outfile.as_posix())
+    return outfile
+
+
 def speak(text: str, enable: bool) -> None:
     text = (text or "").strip()
     if not text:
         logger.info("Empty reply – nothing to speak.")
         return
 
-    if enable:
-        asyncio.create_task(safe_speak(text))
-    else:
+    if not enable:
         print(f"Assistant: {text}")
+        return
+
+    voice = CONFIG["tts"]["voice"]  # load from config.json
+    try:
+        loop = asyncio.new_event_loop()
+        wav_path = loop.run_until_complete(_edge_tts(text, voice))
+        os.system(f'start /min wmplayer "{wav_path}" /play /close')  # uses built-in Windows player
+        loop.close()
+        # delete after play finishes (delay 5 s for short replies)
+        asyncio.run(asyncio.sleep(5))
+        wav_path.unlink(missing_ok=True)
+    except Exception as e:
+        logger.error("Edge-TTS failed: %s", e, exc_info=logger.isEnabledFor(logging.DEBUG))
 
 
 def handle_text(text: str, router: IntentRouter, tts: bool, transcript: Transcript) -> None:
