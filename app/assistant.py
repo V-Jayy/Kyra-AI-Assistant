@@ -167,7 +167,9 @@ def _fix_wake_word(text: str) -> str:
     return re.sub(pattern, WAKE_WORD, text, flags=re.I)
 
 
-_STOP_WORDS = re.compile(r"^(?:the|a|an|process)\s+", re.I)
+_STOP_WORDS = re.compile(
+    r"^(?:the|a|an|process|explorer(?: to)?|explore(?: to)?)\s+", re.I
+)
 
 
 def _clean_arg(arg: str) -> str:
@@ -274,6 +276,8 @@ def handle_text(text: str, router: IntentRouter, tts: bool, transcript: Transcri
                 act.args["name"] = _clean_arg(act.args.get("name", ""))
             if act.name == "open_website":
                 act.args["url"] = _clean_arg(act.args.get("url", ""))
+            if act.name == "open_explorer":
+                act.args["path"] = _clean_arg(act.args.get("path", ""))
             if DEBUG:
                 transcript.log("FUNC", f"{act.name} {act.args} | raw='{text}'")
             ok, msg = _REGISTRY[act.name]["callable"](**act.args)
@@ -291,6 +295,8 @@ def handle_text(text: str, router: IntentRouter, tts: bool, transcript: Transcri
             args_route["url"] = _clean_arg(args_route.get("url", ""))
             if not args_route["url"]:
                 name = None
+        if name == "open_explorer":
+            args_route["path"] = _clean_arg(args_route.get("path", ""))
         if name and DEBUG:
             transcript.log("FUNC", f"{name} {args_route} | raw='{text}'")
         if name:

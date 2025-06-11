@@ -25,6 +25,12 @@ def test_open_explorer(monkeypatch, tmp_path):
     assert opened
 
 
+def test_clean_arg_explorer():
+    from app.assistant import _clean_arg
+
+    assert _clean_arg("explorer to desktop") == "desktop"
+
+
 def test_create_note(tmp_path):
     ok, msg = tools.create_note("buy milk", directory=str(tmp_path))
     assert ok

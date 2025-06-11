@@ -15,7 +15,10 @@ class Action:
 
 _PATTERNS = {
     "open_explorer": (
-        re.compile(r"(?:open|show) (?P<path>(?:[A-Za-z]:|~|/).+|.+(?:folder|directory).*)", re.I),
+        re.compile(
+            r"(?:open|show)(?: .{0,20}?explor(?:er|e)(?: to)?)? (?P<path>(?:[A-Za-z]:|~|/).+|.+(?:folder|directory).*|(?:desktop|downloads|documents|pictures|music|videos)(?:\b|$))",
+            re.I,
+        ),
         "path",
     ),
     "create_note": (re.compile(r"(?:note|remember) (?P<content>.+)", re.I), "content"),
