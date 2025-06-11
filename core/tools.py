@@ -14,6 +14,9 @@ __all__ = [
     "sanitize_domain",
     "launch_app",
     "kill_process",
+    "open_explorer",
+    "find_file_and_open",
+    "create_note",
     "search_files",
     "play_music",
     "install_cmd",
@@ -47,6 +50,10 @@ TOOL_SCHEMAS: List[Dict[str, Any]] = [
     {
         "name": "find_file_and_open",
         "parameters": {"type": "object", "required": []},
+    },
+    {
+        "name": "create_note",
+        "parameters": {"type": "object", "required": ["content"]},
     },
     {
         "name": "search_files",
@@ -122,6 +129,8 @@ import os
 import subprocess
 import platform
 import webbrowser
+import pathlib
+import time
 
 
 def sanitize_domain(text: str) -> str:
@@ -214,6 +223,45 @@ def kill_process(name: str) -> Tuple[bool, str]:
     except subprocess.CalledProcessError:
         return False, f"Could not kill {proc}"
 
+
+@tool
+def open_explorer(path: str) -> Tuple[bool, str]:
+    """Open a file or directory in the system file explorer."""
+    target = os.path.expanduser(path)
+    if not os.path.exists(target):
+        return False, f"{target} not found"
+    try:
+        uri = pathlib.Path(target).resolve().as_uri()
+        webbrowser.open(uri)
+        return True, f"Opened {target}"
+    except Exception as exc:  # pragma: no cover - platform dependent
+        return False, str(exc)
+
+
+@tool
+def find_file_and_open(name: str, directory: str | None = None) -> Tuple[bool, str]:
+    """Search for *name* under *directory* and open the first match."""
+    root = os.path.expanduser(directory or ".")
+    for dirpath, _dirs, files in os.walk(root):
+        for f in files:
+            if fnmatch.fnmatch(f.lower(), name.lower()):
+                return open_explorer(os.path.join(dirpath, f))
+    return False, "No file found"
+
+
+@tool
+def create_note(content: str, directory: str = "notes") -> Tuple[bool, str]:
+    """Write *content* to a timestamped text file under *directory*."""
+    dest = os.path.expanduser(directory)
+    os.makedirs(dest, exist_ok=True)
+    stamp = time.strftime("%Y%m%d_%H%M%S")
+    path = os.path.join(dest, f"note_{stamp}.txt")
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(content + "\n")
+        return True, f"Saved {path}"
+    except Exception as exc:  # pragma: no cover - platform dependent
+        return False, str(exc)
 
 @tool
 def install_cmd() -> Tuple[bool, str]:

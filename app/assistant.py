@@ -153,6 +153,10 @@ def summarise_router_reply(reply: str | Dict[str, Any]) -> str:
         return f"Downloading {args['package']}"
     if name == "kill_process" and "name" in args:
         return f"Killing {args['name']}"
+    if name == "open_explorer" and "path" in args:
+        return f"Opening {args['path']}"
+    if name == "create_note" and "content" in args:
+        return "Saved note"
     return name
 
 

@@ -12,3 +12,10 @@ def test_fuzzy_open():
     assert isinstance(act, Action)
     assert act.name == "open_website"
     assert "url" in act.args
+
+
+def test_fuzzy_open_folder():
+    act = fuzzy_match("open ~/Downloads")
+    assert isinstance(act, Action)
+    assert act.name == "open_explorer"
+    assert "path" in act.args
