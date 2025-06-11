@@ -1,7 +1,8 @@
 vosk
 requests
 pydantic
-gTTS
-playsound==1.2.2
-rapidfuzz
+edge-tts
+pyttsx3
+rapidfuzz>=3
+rich
 jsonschema

@@ -7,7 +7,7 @@ import os
 from typing import AsyncGenerator, Optional, Dict, Any
 
 import pyaudio
-from core.tts import speak as tts_speak
+from app.tts import safe_speak
 from vosk import Model, KaldiRecognizer
 import logging
 import re
@@ -15,7 +15,7 @@ import urllib.parse
 import webbrowser
 import requests
 
-from core.config import DEBUG, WAKE_WORD, TTS_ENGINE
+from app.constants import DEBUG, WAKE_WORD, WAKE_WORD_ALIASES, VOSK_MODEL_PATH
 
 if not DEBUG:
     os.environ.setdefault("VOSK_LOG_LEVEL", "-1")
@@ -25,7 +25,7 @@ from core.intent_router import IntentRouter
 from core.transcript import Transcript
 
 from core.tools import _REGISTRY, tool, _TOOL_SCHEMA_MAP
-from core.dispatcher import match_intent
+from app.intent_router import fuzzy_match, Action
 
 ROUTER_PROMPT = """
 You are an intent‑router for a local voice assistant.
@@ -104,8 +104,8 @@ def _safe_json_load(raw: str) -> Dict[str, Any] | None:
     return None
 
 
-def summarise_router_reply(reply: str | Dict[str, Any]) -> tuple[str | None, Dict[str, Any]]:
-    """Return (function_name, arguments) from *reply* without raising."""
+def summarise_router_reply(reply: str | Dict[str, Any]) -> str:
+    """Return a short spoken confirmation for a router reply."""
     if isinstance(reply, dict):
         obj = reply
     else:
@@ -131,7 +131,28 @@ def summarise_router_reply(reply: str | Dict[str, Any]) -> tuple[str | None, Dic
         raw_args = obj.get("arguments", {})
         if isinstance(raw_args, dict):
             args = raw_args
-    return name, args
+
+    if not name:
+        return ""
+    if name == "open_website" and "url" in args:
+        return f"Opening {args['url']}"
+    if name == "launch_app" and "app" in args:
+        return f"Launching {args['app']}"
+    if name == "play_music":
+        q = args.get("query") or args.get("url", "")
+        return f"Playing {q}".strip()
+    if name == "download_app" and "package" in args:
+        return f"Downloading {args['package']}"
+    if name == "kill_process" and "name" in args:
+        return f"Killing {args['name']}"
+    return name
+
+
+def _fix_wake_word(text: str) -> str:
+    """Normalize common mis-hearings of the wake word."""
+    aliases = "|".join(re.escape(w) for w in WAKE_WORD_ALIASES)
+    pattern = rf"\b(?:{aliases})\b"
+    return re.sub(pattern, WAKE_WORD, text, flags=re.I)
 
 
 async def microphone_chunks() -> AsyncGenerator[bytes, None]:
@@ -171,34 +192,33 @@ def speak(text: str, enable: bool) -> None:
         return
 
     if enable:
-        tts_speak(text)
+        asyncio.create_task(safe_speak(text))
     else:
         print(f"Assistant: {text}")
 
 
 def handle_text(text: str, router: IntentRouter, tts: bool, transcript: Transcript) -> None:
-    """Map *text* to a tool either via local rules or the LLM."""
-    name, args = match_intent(text)
-    if name and name in _REGISTRY:
-        if DEBUG:
-            logger.info("Mapped input '%s' to '%s' with %s", text, name, args)
-        ok, msg = _REGISTRY[name]["callable"](**args)
-        transcript.log("BOT", msg)
-        speak(msg, tts)
-        print(f"USER: {text}\nKyra: {msg}")
-        return
+    """Map *text* to a tool either via fuzzy rules or the LLM."""
+    act = fuzzy_match(text)
+    if act:
+        if act.name == "repeat":
+            speak("Please repeat that", tts)
+            return
+        if act.name in _REGISTRY:
+            ok, msg = _REGISTRY[act.name]["callable"](**act.args)
+            transcript.log("BOT", msg)
+            speak(msg, tts)
+            return
 
     name, args_route, _ = router.route(text)
     if name and name in _REGISTRY:
         ok, msg = _REGISTRY[name]["callable"](**args_route)
         transcript.log("BOT", msg)
         speak(msg, tts)
-        print(f"USER: {text}\nKyra: {msg}")
     else:
         reply = args_route.get("content", "I didn't understand")
         transcript.log("BOT", reply)
         speak(reply, tts)
-        print(f"USER: {text}\nKyra: {reply}")
 
 
 async def voice_loop(
@@ -212,14 +232,20 @@ async def voice_loop(
     async for chunk in microphone_chunks():
         if recognizer.AcceptWaveform(chunk):
             res = json.loads(recognizer.Result())
-            text = res.get("text", "")
+            text = res.get("text", "").strip()
+            text = _fix_wake_word(text)
             if not text:
                 continue
-            transcript.log("USER", text)
-            if text.lower().startswith(WAKE_WORD.lower()):
-                speak("I'm listening", tts)
+            if not text.lower().startswith(WAKE_WORD.lower()):
                 continue
-            handle_text(text, router, tts, transcript)
+            cmd = text[len(WAKE_WORD):].strip()
+            transcript.log("USER", cmd)
+            handle_text(cmd, router, tts, transcript)
+        else:
+            if DEBUG:
+                part = json.loads(recognizer.PartialResult()).get("partial", "")
+                if part:
+                    transcript.log("PART", part)
 
 
 async def console_loop(router: IntentRouter, transcript: Transcript) -> None:
@@ -235,10 +261,10 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--mode",
-        choices=["voice", "text"],
+        choices=["voice", "console"],
         default="voice",
     )
-    parser.add_argument("--model-path", default="vosk-model-small-en-us-0.15")
+    parser.add_argument("--model-path", default=VOSK_MODEL_PATH)
     parser.add_argument("text", nargs="*", help="Optional one-shot command")
     args = parser.parse_args()
 
