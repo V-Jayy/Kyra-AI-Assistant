@@ -30,10 +30,6 @@ $ kyra open youtube.com
 [BOT] Opening https://youtube.com
 ```
 
-The assistant loads settings from `~/.kyra/config.yaml` on first run (or the
-path defined by the `KYRA_CONFIG` environment variable). Edit this file to
-change the wake word, voice or debugging options.
-
 Run `python -m app.scenarios` to execute the CSV-driven self test harness.
 
 The `kill_process` tool can force quit applications by process name, e.g.

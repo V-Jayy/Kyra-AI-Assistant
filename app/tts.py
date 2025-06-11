@@ -12,7 +12,7 @@ try:  # pragma: no cover - optional dep
 except Exception:  # pragma: no cover - environment may lack engines
     pyttsx3 = None
 
-from .config import VOICE, TTS_FALLBACK, DEBUG
+from .constants import VOICE, TTS_FALLBACK, DEBUG
 
 logger = logging.getLogger(__name__)
 

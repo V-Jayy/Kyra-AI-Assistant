@@ -1,7 +1,0 @@
-# Example Kyra configuration
-# Copy to ~/.kyra/config.yaml or set KYRA_CONFIG to your desired path
-wake_word: kyra
-voice: en-US-AriaNeural
-tts_fallback: true
-debug: true
-vosk_model_path: vosk-model-small-en-us-0.15

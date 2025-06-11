@@ -7,7 +7,6 @@ sys.modules.setdefault('rapidfuzz', types.SimpleNamespace(fuzz=types.SimpleNames
 sys.modules.setdefault('pydantic', types.SimpleNamespace(BaseModel=object))
 sys.modules.setdefault('edge_tts', types.SimpleNamespace(Communicate=lambda *a, **k: types.SimpleNamespace(save=lambda p: None)))
 sys.modules.setdefault('pyttsx3', types.SimpleNamespace(init=lambda: types.SimpleNamespace(say=lambda t: None, runAndWait=lambda: None)))
-sys.modules.setdefault('yaml', types.SimpleNamespace(safe_load=lambda s: {}, safe_dump=lambda d, f: None))
 sys.modules.setdefault('rich.console', types.SimpleNamespace(Console=lambda *a, **k: types.SimpleNamespace(print=lambda *a, **k: None)))
 sys.modules.setdefault('rich.text', types.SimpleNamespace(Text=lambda *a, **k: None))
 
@@ -28,6 +27,3 @@ dummy_requests.post = lambda *a, **k: _DummyResp()
 dummy_requests.exceptions = _types.SimpleNamespace(RequestException=Exception)
 sys.modules.setdefault('requests', dummy_requests)
 sys.modules.setdefault('requests.exceptions', dummy_requests.exceptions)
-
-# ensure config writes to a temp file
-os.environ.setdefault('KYRA_CONFIG', os.path.join(os.path.dirname(__file__), 'test_config.yaml'))

@@ -15,7 +15,7 @@ import urllib.parse
 import webbrowser
 import requests
 
-from app.config import DEBUG, WAKE_WORD, VOSK_MODEL_PATH
+from app.constants import DEBUG, WAKE_WORD, VOSK_MODEL_PATH
 
 if not DEBUG:
     os.environ.setdefault("VOSK_LOG_LEVEL", "-1")
@@ -148,6 +148,11 @@ def summarise_router_reply(reply: str | Dict[str, Any]) -> str:
     return name
 
 
+def _fix_wake_word(text: str) -> str:
+    """Normalize common mis-hearings of the wake word."""
+    return re.sub(r"\b(kira|kiera|keira|kiara)\b", WAKE_WORD, text, flags=re.I)
+
+
 async def microphone_chunks() -> AsyncGenerator[bytes, None]:
     q: asyncio.Queue[bytes] = asyncio.Queue()
     loop = asyncio.get_running_loop()
@@ -226,6 +231,7 @@ async def voice_loop(
         if recognizer.AcceptWaveform(chunk):
             res = json.loads(recognizer.Result())
             text = res.get("text", "").strip()
+            text = _fix_wake_word(text)
             if not text:
                 continue
             if not text.lower().startswith(WAKE_WORD.lower()):
