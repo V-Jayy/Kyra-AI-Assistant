@@ -1,0 +1,18 @@
+Kyra AI Assistant Full Installer and Fixes
+========================================
+
+Batch files provided:
+- install_requirements.bat – install Python dependencies.
+- start_kyra_voice.bat – launch Kyra in voice mode.
+- start_kyra_text.bat – launch Kyra in text mode.
+- install_to_cmd.bat – install Kyra under "C:\Program Files\Kyra" and create "C:\Windows\Kyra.bat".
+- uninstall_from_cmd.bat – remove the launcher batch file.
+- install_to_system.bat – perform the same global install (for admins).
+- uninstall_kyra.bat – remove Kyra files and command hook.
+
+Python fixes include:
+- Graceful handling of microphone errors when starting audio capture.
+- Unified logging of user input and assistant response for both text and voice modes.
+- Lower log verbosity for Vosk, urllib3 and gTTS unless debug is enabled.
+- Simplified play_music fallback to open a YouTube search when no direct URL is given.
+- Text-to-speech now reports failures and cleans up temporary files.

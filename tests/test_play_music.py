@@ -9,7 +9,6 @@ class FakeResp:
     def __init__(self, text):
         self.text = text
 
-
 def test_play_music_fetch(monkeypatch):
     opened = {}
     def fake_open(url):

@@ -6,10 +6,8 @@ import json
 import os
 from typing import AsyncGenerator, Optional, Dict, Any
 
-from gtts import gTTS
-from tempfile import NamedTemporaryFile
 import pyaudio
-from playsound import playsound
+from core.tts import speak as tts_speak
 from vosk import Model, KaldiRecognizer
 import logging
 import re
@@ -18,6 +16,11 @@ import webbrowser
 import requests
 
 from core.config import DEBUG, WAKE_WORD, TTS_ENGINE
+
+if not DEBUG:
+    os.environ.setdefault("VOSK_LOG_LEVEL", "-1")
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("gtts").setLevel(logging.WARNING)
 from core.intent_router import IntentRouter
 from core.transcript import Transcript
 
@@ -48,7 +51,7 @@ logger = logging.getLogger(__name__)
 @tool
 def play_music(url: str | None = None, query: str | None = None) -> tuple[bool, str]:
     """Play a song, playlist or stream in the default browser."""
-    if not url and query:
+    if url is None and query:
         q = urllib.parse.quote_plus(query)
         search_url = f"https://www.youtube.com/results?search_query={q}"
         try:
@@ -80,7 +83,7 @@ _TOOL_SCHEMA_MAP["play_music"] = {
             "description": "A free-text search term if the user did not supply a URL",
         },
     },
-    "required": ["url"],
+    "required": [],
 }
 
 
@@ -137,13 +140,17 @@ async def microphone_chunks() -> AsyncGenerator[bytes, None]:
 
     def _worker() -> None:
         pa = pyaudio.PyAudio()
-        stream = pa.open(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=16000,
-            input=True,
-            frames_per_buffer=8000,
-        )
+        try:
+            stream = pa.open(
+                format=pyaudio.paInt16,
+                channels=1,
+                rate=16000,
+                input=True,
+                frames_per_buffer=8000,
+            )
+        except Exception as e:
+            print(f"Microphone error: {e}")
+            return
         stream.start_stream()
         while True:
             data = stream.read(4000, exception_on_overflow=False)
@@ -164,19 +171,7 @@ def speak(text: str, enable: bool) -> None:
         return
 
     if enable:
-        try:
-            tts_obj = gTTS(text)
-        except AssertionError as e:
-            logger.error(
-                "TTS failed: %s",
-                e,
-                exc_info=logger.isEnabledFor(logging.DEBUG),
-            )
-            return
-        with NamedTemporaryFile(delete=False, suffix=".mp3") as f:
-            tts_obj.save(f.name)
-        playsound(f.name)
-        os.remove(f.name)
+        tts_speak(text)
     else:
         print(f"Assistant: {text}")
 
@@ -190,6 +185,7 @@ def handle_text(text: str, router: IntentRouter, tts: bool, transcript: Transcri
         ok, msg = _REGISTRY[name]["callable"](**args)
         transcript.log("BOT", msg)
         speak(msg, tts)
+        print(f"USER: {text}\nKyra: {msg}")
         return
 
     name, args_route, _ = router.route(text)
@@ -197,10 +193,12 @@ def handle_text(text: str, router: IntentRouter, tts: bool, transcript: Transcri
         ok, msg = _REGISTRY[name]["callable"](**args_route)
         transcript.log("BOT", msg)
         speak(msg, tts)
+        print(f"USER: {text}\nKyra: {msg}")
     else:
         reply = args_route.get("content", "I didn't understand")
         transcript.log("BOT", reply)
         speak(reply, tts)
+        print(f"USER: {text}\nKyra: {reply}")
 
 
 async def voice_loop(

@@ -1,0 +1,8 @@
+Kyra AI Assistant Setup Guide
+=============================
+
+1. Run `install_requirements.bat` to install Python dependencies.
+2. Use `start_kyra_voice.bat` or `start_kyra_text.bat` to launch Kyra in voice or text mode.
+3. Optional: `install_to_cmd.bat` installs Kyra under `C:\Program Files\Kyra` and registers a global `Kyra` command. `uninstall_from_cmd.bat` removes the launcher.
+4. `install_to_system.bat` performs the same global installation (for administrators). `uninstall_kyra.bat` removes everything.
+5. The assistant supports killing processes via `kill_process`, e.g. "Close Discord" will terminate discord.exe. On Windows the `.exe` extension is added automatically.

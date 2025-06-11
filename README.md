@@ -30,3 +30,20 @@ This project uses [gTTS](https://gtts.readthedocs.io/) for text-to-speech
 output.
 
 Run `python -m app.scenarios` to execute the CSV-driven self test harness.
+
+The `kill_process` tool can force quit applications by process name, e.g.
+"Close Discord" will terminate `discord.exe` on Windows. On Windows, the
+`.exe` extension is added automatically if omitted.
+
+Use `install_cmd` to copy the assistant to a directory on your `%PATH%` so you
+can run it via the `Kyra` command. `uninstall_cmd` removes the files again.
+
+On Windows there are helper batch scripts:
+
+- `install_requirements.bat` – install Python packages
+- `start_kyra_voice.bat` – launch in voice mode
+- `start_kyra_text.bat` – launch in text mode
+- `install_to_cmd.bat` – install Kyra under `C:\Program Files\Kyra` and register a global `Kyra` command
+- `uninstall_from_cmd.bat` – remove the global `Kyra` command
+- `install_to_system.bat` – same as `install_to_cmd.bat` but intended for administrators
+- `uninstall_kyra.bat` – fully remove Kyra and the launcher script
