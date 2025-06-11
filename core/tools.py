@@ -8,6 +8,10 @@ import re
 import urllib.parse
 
 from .utils import derive_glob_from_phrase
+import os
+import subprocess
+import platform
+import webbrowser
 
 __all__ = [
     "open_website",
@@ -118,12 +122,6 @@ def validate_tool_args(name: str, args: Dict[str, Any]) -> None:
     validate(args, schema)
 
 
-import os
-import subprocess
-import platform
-import webbrowser
-
-
 def sanitize_domain(text: str) -> str:
     """Return a clean domain or empty string if *text* is not valid."""
     text = text.strip().lower()
@@ -142,13 +140,16 @@ def open_website(url: str) -> Tuple[bool, str]:
     clean = sanitize_domain(url)
     if clean:
         full_url = "https://" + clean if not clean.startswith("http") else clean
+        display = clean
+        action = "Opening"
     else:
-        query = urllib.parse.quote(url.strip())
-        full_url = f"https://www.google.com/search?q={query}"
+        query = url.strip()
+        full_url = f"https://www.google.com/search?q={urllib.parse.quote(query)}"
+        display = query
+        action = "Searching"
     try:
         webbrowser.open_new_tab(full_url)
-        action = "Opening" if clean else "Searching for"
-        return True, f"{action} {full_url}"
+        return True, f"{action} {display}"
     except Exception as exc:  # pragma: no cover - platform dependent
         return False, str(exc)
 

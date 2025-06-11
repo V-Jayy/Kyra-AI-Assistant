@@ -22,6 +22,14 @@ def test_open_website_string_new_schema():
     assert "google.com" in msg
 
 
+def test_open_website_full_url():
+    data = (
+        '{"function": {"name": "open_website", "arguments": {"url": "https://youtube.com/watch?v=abc"}}}'
+    )
+    msg = summarise_router_reply(data)
+    assert msg == "Opening youtube.com"
+
+
 def test_invalid_json():
     msg = summarise_router_reply('')
     assert msg == ""

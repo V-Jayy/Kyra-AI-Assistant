@@ -149,7 +149,12 @@ def summarise_router_reply(reply: str | Dict[str, Any]) -> str:
     if not name:
         return ""
     if name == "open_website" and "url" in args:
-        return f"Opening {args['url']}"
+        from core.tools import sanitize_domain
+
+        clean = sanitize_domain(args["url"])
+        if clean:
+            return f"Opening {clean}"
+        return f"Searching {args['url']}"
     if name == "launch_app" and "app" in args:
         return f"Launching {args['app']}"
     if name == "play_music":
@@ -258,9 +263,21 @@ def speak(text: str, enable: bool) -> None:
 
     async def _run() -> None:
         wav_path = await _edge_tts(text, voice)
-        os.system(f'start /min wmplayer "{wav_path}" /play /close')
-        await asyncio.sleep(5)
-        wav_path.unlink(missing_ok=True)
+        try:
+            if os.name == "nt":
+                import winsound
+
+                winsound.PlaySound(str(wav_path), winsound.SND_FILENAME)
+            else:  # pragma: no cover - windows only path tested
+                proc = await asyncio.create_subprocess_exec(
+                    "aplay",
+                    str(wav_path),
+                    stdout=asyncio.subprocess.DEVNULL,
+                    stderr=asyncio.subprocess.DEVNULL,
+                )
+                await proc.communicate()
+        finally:
+            wav_path.unlink(missing_ok=True)
 
     def _worker() -> None:
         try:
