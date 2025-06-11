@@ -9,7 +9,7 @@ MODEL_NAME = "mistral:7b-instruct"
 _DEFAULT = {
     "wake_word": "Hey Aurora",
     "debug": True,
-    "tts_engine": "piper",
+    "tts_engine": "edge",
     "conversational_mode": True,
 }
 

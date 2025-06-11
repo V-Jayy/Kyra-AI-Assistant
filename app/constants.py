@@ -2,7 +2,6 @@ WAKE_WORD = "kyra"
 # Common variants that should also trigger the assistant
 WAKE_WORD_ALIASES = {"kira", "kiera", "keira", "kiara"}
 VOICE = "en-US-AriaNeural"
-PIPER_MODEL_PATH = "models/en_US-lessac-medium.onnx"
 TTS_FALLBACK = True
 DEBUG = True
 CONVERSATIONAL_MODE = True

@@ -6,10 +6,7 @@ sys.modules.setdefault('pyaudio', types.SimpleNamespace(PyAudio=lambda: None, pa
 sys.modules.setdefault('rapidfuzz', types.SimpleNamespace(fuzz=types.SimpleNamespace(partial_ratio=lambda a, b: 0)))
 sys.modules.setdefault('pydantic', types.SimpleNamespace(BaseModel=object))
 sys.modules.setdefault('edge_tts', types.SimpleNamespace(Communicate=lambda *a, **k: types.SimpleNamespace(save=lambda p: None)))
-_voice = types.SimpleNamespace(config=types.SimpleNamespace(sample_rate=22050), speak=lambda t: [0])
-sys.modules.setdefault('piper', types.SimpleNamespace(PiperVoice=types.SimpleNamespace(load=lambda *a, **k: _voice)))
-sys.modules.setdefault('sounddevice', types.SimpleNamespace(play=lambda *a, **k: None, wait=lambda: None))
-sys.modules.setdefault('numpy', types.SimpleNamespace(array=lambda a: a))
+sys.modules.setdefault('pyttsx3', types.SimpleNamespace(init=lambda: types.SimpleNamespace(say=lambda t: None, runAndWait=lambda: None)))
 sys.modules.setdefault('rich.console', types.SimpleNamespace(Console=lambda *a, **k: types.SimpleNamespace(print=lambda *a, **k: None)))
 sys.modules.setdefault('rich.text', types.SimpleNamespace(Text=lambda *a, **k: None))
 

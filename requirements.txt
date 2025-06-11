@@ -2,8 +2,7 @@ vosk
 requests
 pydantic
 edge-tts
-piper-tts
-sounddevice
+pyttsx3
 rapidfuzz>=3
 rich
 jsonschema
