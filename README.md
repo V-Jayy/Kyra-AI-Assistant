@@ -17,17 +17,21 @@ This project provides an offline voice assistant powered by local models.
    wget https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
    unzip vosk-model-small-en-us-0.15.zip
    ```
+   *(PowerShell)* `Invoke-WebRequest https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip -OutFile model.zip; Expand-Archive model.zip`
 4. **Run the assistant**
    ```bash
-   python -m app.assistant --mode voice
+   python -m kyra --mode voice
    ```
-   Use `--mode text` to interact via the console only.
+   Use `--mode console` for quick keyboard testing.
 
-The assistant reads optional settings from `config.json` where you can
-customise the wake word, enable debug logging and choose the TTS engine.
+Example:
+```bash
+$ kyra open youtube.com
+[BOT] Opening https://youtube.com
+```
 
-This project uses [gTTS](https://gtts.readthedocs.io/) for text-to-speech
-output.
+The assistant loads settings from `config.yaml` created on first run. Edit this
+file to change the wake word, voice or debugging options.
 
 Run `python -m app.scenarios` to execute the CSV-driven self test harness.
 
