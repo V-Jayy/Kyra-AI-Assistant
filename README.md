@@ -1,4 +1,4 @@
-# Aurora Assistant
+# Kyra Assistant
 
 This project provides an offline voice assistant powered by local models.
 
