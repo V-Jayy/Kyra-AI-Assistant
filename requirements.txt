@@ -3,6 +3,7 @@ requests
 pydantic
 edge-tts
 simpleaudio
+miniaudio
 rapidfuzz>=3
 rich
 jsonschema

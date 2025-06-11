@@ -10,7 +10,14 @@ async def _dummy_save(path: str) -> None:
 
 sys.modules.setdefault('edge_tts', types.SimpleNamespace(Communicate=lambda *a, **k: types.SimpleNamespace(save=_dummy_save)))
 sys.modules.setdefault('pyttsx3', types.SimpleNamespace(init=lambda: types.SimpleNamespace(say=lambda t: None, runAndWait=lambda: None)))
-sys.modules.setdefault('simpleaudio', types.SimpleNamespace(WaveObject=types.SimpleNamespace(from_wave_file=lambda p: types.SimpleNamespace(play=lambda: types.SimpleNamespace(wait_done=lambda: None)))))
+sys.modules.setdefault('simpleaudio', types.SimpleNamespace(play_buffer=lambda *a, **k: types.SimpleNamespace(wait_done=lambda: None)))
+class _DummyDecoded:
+    samples = b""
+    nchannels = 1
+    sample_rate = 16000
+    sample_width = 2
+
+sys.modules.setdefault('miniaudio', types.SimpleNamespace(decode_file=lambda *a, **k: _DummyDecoded()))
 sys.modules.setdefault('rich.console', types.SimpleNamespace(Console=lambda *a, **k: types.SimpleNamespace(print=lambda *a, **k: None)))
 sys.modules.setdefault('rich.text', types.SimpleNamespace(Text=lambda *a, **k: None))
 
