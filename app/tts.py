@@ -7,6 +7,11 @@ from tempfile import NamedTemporaryFile
 
 from edge_tts import Communicate
 
+try:  # pragma: no cover - optional
+    import comtypes.client as cc
+except Exception:
+    cc = None
+
 try:  # pragma: no cover - optional dep
     import pyttsx3
 except Exception:  # pragma: no cover - environment may lack engines
@@ -22,6 +27,9 @@ async def _edge_play(text: str, voice: str) -> None:
     with NamedTemporaryFile(delete=False, suffix=".mp3") as f:
         await communicate.save(f.name)
         path = f.name
+    if not os.path.exists(path):
+        logger.error("TTS output missing: %s", path)
+        return
     if os.name == "nt":
         os.startfile(path)  # type: ignore[attr-defined]
     elif os.system(f"which xdg-open > /dev/null 2>&1") == 0:
@@ -42,6 +50,14 @@ async def _pyttsx3_play(text: str) -> None:
     await loop.run_in_executor(None, engine.runAndWait)
 
 
+async def _sapi_play(text: str) -> None:
+    if cc is None:  # pragma: no cover - optional
+        raise RuntimeError("comtypes unavailable")
+    speaker = cc.CreateObject("SAPI.SpVoice")
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, speaker.Speak, text)
+
+
 async def safe_speak(text: str) -> None:
     text = (text or "").strip()
     if text == "":
@@ -57,6 +73,12 @@ async def safe_speak(text: str) -> None:
             logger.warning("edge-tts failed: %s", exc)
             if not TTS_FALLBACK:
                 return
+        if os.name == "nt":
+            try:
+                await _sapi_play(text)
+                return
+            except Exception as exc:  # pragma: no cover - windows only
+                logger.error("sapi failed: %s", exc)
         if pyttsx3:
             try:
                 await _pyttsx3_play(text)

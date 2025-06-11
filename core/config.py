@@ -10,6 +10,7 @@ _DEFAULT = {
     "wake_word": "Hey Aurora",
     "debug": True,
     "tts_engine": "gtts",
+    "conversational_mode": True,
 }
 
 _CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "config.json")
@@ -25,5 +26,15 @@ _CONFIG = {**_DEFAULT, **_USER}
 WAKE_WORD: str = _CONFIG.get("wake_word", _DEFAULT["wake_word"])
 DEBUG: bool = bool(_CONFIG.get("debug", _DEFAULT["debug"]))
 TTS_ENGINE: str = _CONFIG.get("tts_engine", _DEFAULT["tts_engine"])
+CONVERSATIONAL_MODE: bool = bool(
+    _CONFIG.get("conversational_mode", _DEFAULT["conversational_mode"])
+)
 
-__all__ = ["LLM_BASE_URL", "MODEL_NAME", "WAKE_WORD", "DEBUG", "TTS_ENGINE"]
+__all__ = [
+    "LLM_BASE_URL",
+    "MODEL_NAME",
+    "WAKE_WORD",
+    "DEBUG",
+    "TTS_ENGINE",
+    "CONVERSATIONAL_MODE",
+]
