@@ -1,4 +1,4 @@
-import sys, types
+import os, sys, types
 import types as _types
 
 sys.modules.setdefault('vosk', types.SimpleNamespace(Model=lambda *a, **k: None, KaldiRecognizer=lambda *a, **k: None))
@@ -28,3 +28,6 @@ dummy_requests.post = lambda *a, **k: _DummyResp()
 dummy_requests.exceptions = _types.SimpleNamespace(RequestException=Exception)
 sys.modules.setdefault('requests', dummy_requests)
 sys.modules.setdefault('requests.exceptions', dummy_requests.exceptions)
+
+# ensure config writes to a temp file
+os.environ.setdefault('KYRA_CONFIG', os.path.join(os.path.dirname(__file__), 'test_config.yaml'))

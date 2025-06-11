@@ -13,11 +13,15 @@ _DEFAULT = {
     "vosk_model_path": "vosk-model-small-en-us-0.15",
 }
 
-_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "config.yaml")
+_DEFAULT_HOME = os.path.join(os.path.expanduser("~"), ".kyra")
+_CONFIG_PATH = os.path.expanduser(
+    os.getenv("KYRA_CONFIG", os.path.join(_DEFAULT_HOME, "config.yaml"))
+)
 
 
 def _load_config() -> Dict[str, Any]:
     if not os.path.exists(_CONFIG_PATH):
+        os.makedirs(os.path.dirname(_CONFIG_PATH), exist_ok=True)
         with open(_CONFIG_PATH, "w", encoding="utf-8") as f:
             yaml.safe_dump(_DEFAULT, f)
         return _DEFAULT.copy()

@@ -30,8 +30,9 @@ $ kyra open youtube.com
 [BOT] Opening https://youtube.com
 ```
 
-The assistant loads settings from `config.yaml` created on first run. Edit this
-file to change the wake word, voice or debugging options.
+The assistant loads settings from `~/.kyra/config.yaml` on first run (or the
+path defined by the `KYRA_CONFIG` environment variable). Edit this file to
+change the wake word, voice or debugging options.
 
 Run `python -m app.scenarios` to execute the CSV-driven self test harness.
 
