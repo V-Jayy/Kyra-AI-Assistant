@@ -47,3 +47,5 @@ On Windows there are helper batch scripts:
 - `uninstall_from_cmd.bat` – remove the global `Kyra` command
 - `install_to_system.bat` – same as `install_to_cmd.bat` but intended for administrators
 - `uninstall_kyra.bat` – fully remove Kyra and the launcher script
+
+Diagram to help vizualize Kyra's though process: ![Screenshot](explanation.png)
