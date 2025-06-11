@@ -1,4 +1,6 @@
-import os, sys, types
+import os
+import sys
+import types
 import pytest
 
 # Stub pyttsx3 and edge_tts so safe_speak imports without deps
@@ -7,7 +9,7 @@ edge_mock = types.SimpleNamespace(Communicate=lambda text, voice: types.SimpleNa
 sys.modules.setdefault('edge_tts', edge_mock)
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from app.tts import safe_speak
+from app.tts import safe_speak  # noqa: E402
 
 def test_safe_speak_empty():
     import asyncio

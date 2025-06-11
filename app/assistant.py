@@ -12,6 +12,7 @@ import pyaudio
 import edge_tts
 import tempfile
 from pathlib import Path
+import threading
 from vosk import Model, KaldiRecognizer
 import logging
 import re
@@ -253,17 +254,21 @@ def speak(text: str, enable: bool) -> None:
         print(f"Assistant: {text}")
         return
 
-    voice = CONFIG["tts"]["voice"]  # load from config.json
-    try:
-        loop = asyncio.new_event_loop()
-        wav_path = loop.run_until_complete(_edge_tts(text, voice))
-        os.system(f'start /min wmplayer "{wav_path}" /play /close')  # uses built-in Windows player
-        loop.close()
-        # delete after play finishes (delay 5 s for short replies)
-        asyncio.run(asyncio.sleep(5))
+    voice = CONFIG["tts"]["voice"]
+
+    async def _run() -> None:
+        wav_path = await _edge_tts(text, voice)
+        os.system(f'start /min wmplayer "{wav_path}" /play /close')
+        await asyncio.sleep(5)
         wav_path.unlink(missing_ok=True)
-    except Exception as e:
-        logger.error("Edge-TTS failed: %s", e, exc_info=logger.isEnabledFor(logging.DEBUG))
+
+    def _worker() -> None:
+        try:
+            asyncio.run(_run())
+        except Exception as e:
+            logger.error("Edge-TTS failed: %s", e, exc_info=logger.isEnabledFor(logging.DEBUG))
+
+    threading.Thread(target=_worker, daemon=True).start()
 
 
 def handle_text(text: str, router: IntentRouter, tts: bool, transcript: Transcript) -> None:
