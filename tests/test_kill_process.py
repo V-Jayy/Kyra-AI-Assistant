@@ -8,19 +8,15 @@ from core import tools
 def test_kill_process(monkeypatch):
     called = {}
 
-    def fake_run(cmd, check, stdout=None, stderr=None):
+    def fake_run(cmd, check):
         called['cmd'] = cmd
-        class Result:
-            pass
-        return Result()
+        return None
 
     monkeypatch.setattr(subprocess, 'run', fake_run)
     ok, msg = tools.kill_process('discord')
     assert ok
     assert 'discord' in msg.lower()
     if os.name == 'nt':
-        assert called['cmd'][0].lower() == 'taskkill'
-        assert called['cmd'][3].lower() == 'discord.exe'
+        assert called['cmd'] == ['taskkill', '/F', '/IM', 'discord.exe']
     else:
-        assert called['cmd'][0] == 'pkill'
-        assert called['cmd'][2] == 'discord'
+        assert called['cmd'] == ['pkill', '-f', 'discord']

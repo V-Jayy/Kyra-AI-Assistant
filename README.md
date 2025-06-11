@@ -37,3 +37,11 @@ The `kill_process` tool can force quit applications by process name, e.g.
 
 Use `install_cmd` to copy the assistant to a directory on your `%PATH%` so you
 can run it via the `Kyra` command. `uninstall_cmd` removes the files again.
+
+On Windows there are helper batch scripts:
+
+- `install_requirements.bat` – install Python packages
+- `start_kyra_voice.bat` – launch in voice mode
+- `start_kyra_text.bat` – launch in text mode
+- `install_to_cmd.bat` – copy `Kyra.cmd` into `WindowsApps`
+- `uninstall_from_cmd.bat` – remove the `Kyra` command

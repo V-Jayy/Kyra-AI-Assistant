@@ -120,6 +120,7 @@ def validate_tool_args(name: str, args: Dict[str, Any]) -> None:
 
 import os
 import subprocess
+import platform
 import webbrowser
 
 
@@ -198,16 +199,20 @@ def search_files(directory: str, pattern: str, **_unused: Any) -> Tuple[bool, st
 @tool
 def kill_process(name: str) -> Tuple[bool, str]:
     """Force terminate processes matching *name*."""
+    proc = name.lower().replace(".exe", "")
     try:
-        if os.name == "nt":
-            target = name if name.lower().endswith(".exe") else f"{name}.exe"
-            cmd = ["taskkill", "/f", "/im", target]
+        if platform.system() == "Windows":
+            subprocess.run([
+                "taskkill",
+                "/F",
+                "/IM",
+                f"{proc}.exe",
+            ], check=True)
         else:
-            cmd = ["pkill", "-f", name]
-        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return True, f"Closed {name}"
-    except Exception as exc:  # pragma: no cover - platform dependent
-        return False, str(exc)
+            subprocess.run(["pkill", "-f", proc], check=True)
+        return True, f"Killed {proc}"
+    except subprocess.CalledProcessError:
+        return False, f"Could not kill {proc}"
 
 
 @tool

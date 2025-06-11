@@ -6,10 +6,8 @@ import json
 import os
 from typing import AsyncGenerator, Optional, Dict, Any
 
-from gtts import gTTS
-from tempfile import NamedTemporaryFile
 import pyaudio
-from playsound import playsound
+from core.tts import speak as tts_speak
 from vosk import Model, KaldiRecognizer
 import logging
 import re
@@ -164,19 +162,7 @@ def speak(text: str, enable: bool) -> None:
         return
 
     if enable:
-        try:
-            tts_obj = gTTS(text)
-        except AssertionError as e:
-            logger.error(
-                "TTS failed: %s",
-                e,
-                exc_info=logger.isEnabledFor(logging.DEBUG),
-            )
-            return
-        with NamedTemporaryFile(delete=False, suffix=".mp3") as f:
-            tts_obj.save(f.name)
-        playsound(f.name)
-        os.remove(f.name)
+        tts_speak(text)
     else:
         print(f"Assistant: {text}")
 

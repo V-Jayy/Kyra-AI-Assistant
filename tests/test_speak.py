@@ -8,6 +8,6 @@ from app.assistant import speak
 
 
 def test_speak_empty(monkeypatch):
-    monkeypatch.setattr("app.assistant.gTTS", lambda _: _)
+    monkeypatch.setattr("core.tts.speak", lambda text: None)
     speak("", True)
     speak("   ", True)
