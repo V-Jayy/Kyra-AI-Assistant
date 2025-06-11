@@ -27,11 +27,13 @@ def speak(text: str) -> None:
             tts_obj = gTTS(text)
             with NamedTemporaryFile(delete=False, suffix=".mp3") as f:
                 tts_obj.save(f.name)
-            playsound(f.name)
-            os.remove(f.name)
+            try:
+                playsound(f.name)
+            finally:
+                os.remove(f.name)
             return
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"TTS failed: {e}")
 
     if pyttsx3:
         engine = pyttsx3.init()

@@ -16,6 +16,11 @@ import webbrowser
 import requests
 
 from core.config import DEBUG, WAKE_WORD, TTS_ENGINE
+
+if not DEBUG:
+    os.environ.setdefault("VOSK_LOG_LEVEL", "-1")
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("gtts").setLevel(logging.WARNING)
 from core.intent_router import IntentRouter
 from core.transcript import Transcript
 
@@ -46,18 +51,9 @@ logger = logging.getLogger(__name__)
 @tool
 def play_music(url: str | None = None, query: str | None = None) -> tuple[bool, str]:
     """Play a song, playlist or stream in the default browser."""
-    if not url and query:
-        q = urllib.parse.quote_plus(query)
-        search_url = f"https://www.youtube.com/results?search_query={q}"
-        try:
-            resp = requests.get(search_url, timeout=5)
-            m = re.search(r"/watch\?v=([\w-]{11})", resp.text)
-            if m:
-                url = f"https://www.youtube.com/watch?v={m.group(1)}"
-            else:
-                url = search_url
-        except Exception:
-            url = search_url
+    if url is None and query:
+        search_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote_plus(query)}"
+        url = search_url
     if url:
         try:
             webbrowser.open(url)
@@ -78,7 +74,7 @@ _TOOL_SCHEMA_MAP["play_music"] = {
             "description": "A free-text search term if the user did not supply a URL",
         },
     },
-    "required": ["url"],
+    "required": [],
 }
 
 
@@ -135,13 +131,17 @@ async def microphone_chunks() -> AsyncGenerator[bytes, None]:
 
     def _worker() -> None:
         pa = pyaudio.PyAudio()
-        stream = pa.open(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=16000,
-            input=True,
-            frames_per_buffer=8000,
-        )
+        try:
+            stream = pa.open(
+                format=pyaudio.paInt16,
+                channels=1,
+                rate=16000,
+                input=True,
+                frames_per_buffer=8000,
+            )
+        except Exception as e:
+            print(f"Microphone error: {e}")
+            return
         stream.start_stream()
         while True:
             data = stream.read(4000, exception_on_overflow=False)
@@ -176,6 +176,7 @@ def handle_text(text: str, router: IntentRouter, tts: bool, transcript: Transcri
         ok, msg = _REGISTRY[name]["callable"](**args)
         transcript.log("BOT", msg)
         speak(msg, tts)
+        print(f"USER: {text}\nKyra: {msg}")
         return
 
     name, args_route, _ = router.route(text)
@@ -183,10 +184,12 @@ def handle_text(text: str, router: IntentRouter, tts: bool, transcript: Transcri
         ok, msg = _REGISTRY[name]["callable"](**args_route)
         transcript.log("BOT", msg)
         speak(msg, tts)
+        print(f"USER: {text}\nKyra: {msg}")
     else:
         reply = args_route.get("content", "I didn't understand")
         transcript.log("BOT", reply)
         speak(reply, tts)
+        print(f"USER: {text}\nKyra: {reply}")
 
 
 async def voice_loop(

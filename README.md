@@ -45,3 +45,5 @@ On Windows there are helper batch scripts:
 - `start_kyra_text.bat` – launch in text mode
 - `install_to_cmd.bat` – copy `Kyra.cmd` into `WindowsApps`
 - `uninstall_from_cmd.bat` – remove the `Kyra` command
+- `install_to_system.bat` – install Kyra to `C:\Program Files\Kyra` and add a global `Kyra` command
+- `uninstall_kyra.bat` – fully remove Kyra and the command hook
