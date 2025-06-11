@@ -232,9 +232,17 @@ def install_cmd() -> Tuple[bool, str]:
             shutil.copytree(root, dest, dirs_exist_ok=True)
             script = os.path.join(p, "Kyra.cmd" if os.name == "nt" else "Kyra")
             if os.name == "nt":
-                content = f"@echo off\n{sys.executable} \"%~dp0Kyra/app/assistant.py\" %*"
+                content = (
+                    "@echo off\n"
+                    "cd /d %~dp0Kyra\n"
+                    f"{sys.executable} -m app.assistant %*"
+                )
             else:
-                content = f"#!/bin/sh\n{sys.executable} \"$(dirname \"$0\")/Kyra/app/assistant.py\" \"$@\""
+                content = (
+                    "#!/bin/sh\n"
+                    "cd \"$(dirname \"$0\")/Kyra\"\n"
+                    f"exec {sys.executable} -m app.assistant \"$@\""
+                )
             with open(script, "w", newline="") as f:
                 f.write(content)
             if os.name != "nt":

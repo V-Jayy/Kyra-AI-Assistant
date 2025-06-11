@@ -27,11 +27,9 @@ class IntentRouter:
 
     def __init__(self) -> None:
         self.system_prompt = (
-            "You are an intent\u2011router for a local voice assistant.\n\n"
-            "Respond with **ONLY** a JSON object like one of these \u2014 no prose, no markdown:\n\n"
-            "{ \"function\": null }\n\n"
-            "or\n\n"
-            "{\n  \"function\": {\n    \"name\": \"<one_of_the_function_names_provided>\",\n    \"arguments\": { /* every required parameter */ }\n  }\n}"
+            "You are Kyra, a helpful local assistant. "
+            "Respond conversationally unless a tool should be used. "
+            "When an action is required, respond with the appropriate tool call."
         )
         base = [t for t in get_openai_tools() if t.get("function", {}).get("name") != "play_music"]
         base.append(
@@ -52,7 +50,7 @@ class IntentRouter:
                                 "description": "A free-text search term if the user did not supply a URL",
                             },
                         },
-                        "required": ["url"],
+                        "required": [],
                     },
                 },
             }

@@ -54,6 +54,14 @@ def test_router_returns_tools():
                 }
             ]
         },
+        "how are you": {
+            "choices": [
+                {
+                    "finish_reason": "stop",
+                    "message": {"content": "I'm fine"},
+                }
+            ]
+        },
     }
     router = FakeLLM(responses)
 
@@ -72,3 +80,7 @@ def test_router_returns_tools():
     name, args, _ = router.route("find file")
     assert name == "search_files"
     assert args["pattern"] == "*.txt"
+
+    name, args, _ = router.route("how are you")
+    assert name is None
+    assert args["content"] == "I'm fine"

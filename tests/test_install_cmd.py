@@ -16,6 +16,8 @@ def test_install_and_uninstall_cmd(monkeypatch, tmp_path):
     assert ok
     script = path_dir / ("Kyra.cmd" if os.name == 'nt' else "Kyra")
     assert script.exists()
+    content = script.read_text()
+    assert 'app.assistant' in content
 
     ok2, msg2 = tools.uninstall_cmd()
     assert ok2

@@ -52,8 +52,17 @@ logger = logging.getLogger(__name__)
 def play_music(url: str | None = None, query: str | None = None) -> tuple[bool, str]:
     """Play a song, playlist or stream in the default browser."""
     if url is None and query:
-        search_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote_plus(query)}"
-        url = search_url
+        q = urllib.parse.quote_plus(query)
+        search_url = f"https://www.youtube.com/results?search_query={q}"
+        try:
+            resp = requests.get(search_url, timeout=5)
+            m = re.search(r"/watch\?v=([\w-]{11})", resp.text)
+            if m:
+                url = f"https://www.youtube.com/watch?v={m.group(1)}"
+            else:
+                url = search_url
+        except Exception:
+            url = search_url
     if url:
         try:
             webbrowser.open(url)
