@@ -6,10 +6,13 @@ import json
 import os
 import random
 import time
-from typing import AsyncGenerator, Optional, Dict, Any
+from typing import AsyncGenerator, Dict, Any
 
 import pyaudio
-from app.tts import safe_speak
+import edge_tts
+import tempfile
+from pathlib import Path
+import threading
 from vosk import Model, KaldiRecognizer
 import logging
 import re
@@ -28,12 +31,15 @@ from app.constants import (
 if not DEBUG:
     os.environ.setdefault("VOSK_LOG_LEVEL", "-1")
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("gtts").setLevel(logging.WARNING)
 from core.intent_router import IntentRouter
 from core.transcript import Transcript
 
 from core.tools import _REGISTRY, tool, _TOOL_SCHEMA_MAP
-from app.intent_router import fuzzy_match, Action
+from app.intent_router import fuzzy_match
+
+CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.json"
+with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+    CONFIG = json.load(f)
 
 ROUTER_PROMPT = """
 You are an intent‑router for a local voice assistant.
@@ -143,7 +149,12 @@ def summarise_router_reply(reply: str | Dict[str, Any]) -> str:
     if not name:
         return ""
     if name == "open_website" and "url" in args:
-        return f"Opening {args['url']}"
+        from core.tools import sanitize_domain
+
+        clean = sanitize_domain(args["url"])
+        if clean:
+            return f"Opening {clean}"
+        return f"Searching {args['url']}"
     if name == "launch_app" and "app" in args:
         return f"Launching {args['app']}"
     if name == "play_music":
@@ -230,16 +241,51 @@ async def microphone_chunks() -> AsyncGenerator[bytes, None]:
         yield data
 
 
+async def _edge_tts(text: str, voice: str) -> Path:
+    # Generates WAV to a temp file and returns the file path
+    outfile = Path(tempfile.mktemp(suffix=".wav"))
+    communicate = edge_tts.Communicate(text, voice, rate="+0%", volume="+0%")
+    await communicate.save(outfile.as_posix())
+    return outfile
+
+
 def speak(text: str, enable: bool) -> None:
     text = (text or "").strip()
     if not text:
         logger.info("Empty reply – nothing to speak.")
         return
 
-    if enable:
-        asyncio.create_task(safe_speak(text))
-    else:
+    if not enable:
         print(f"Assistant: {text}")
+        return
+
+    voice = CONFIG["tts"]["voice"]
+
+    async def _run() -> None:
+        wav_path = await _edge_tts(text, voice)
+        try:
+            if os.name == "nt":
+                import winsound
+
+                winsound.PlaySound(str(wav_path), winsound.SND_FILENAME)
+            else:  # pragma: no cover - windows only path tested
+                proc = await asyncio.create_subprocess_exec(
+                    "aplay",
+                    str(wav_path),
+                    stdout=asyncio.subprocess.DEVNULL,
+                    stderr=asyncio.subprocess.DEVNULL,
+                )
+                await proc.communicate()
+        finally:
+            wav_path.unlink(missing_ok=True)
+
+    def _worker() -> None:
+        try:
+            asyncio.run(_run())
+        except Exception as e:
+            logger.error("Edge-TTS failed: %s", e, exc_info=logger.isEnabledFor(logging.DEBUG))
+
+    threading.Thread(target=_worker, daemon=True).start()
 
 
 def handle_text(text: str, router: IntentRouter, tts: bool, transcript: Transcript) -> None:

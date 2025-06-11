@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from core import tools
@@ -7,7 +8,7 @@ from core import tools
 def test_open_website():
     success, msg = tools.open_website("example.com")
     assert success
-    assert "Opening" in msg
+    assert msg == "Opening example.com"
 
 
 def test_derive_glob_from_phrase():

@@ -12,6 +12,7 @@ This project provides an offline voice assistant powered by local models.
    ```bash
    pip install -r requirements.txt
    ```
+   Kyra uses **Microsoft Edge-TTS neural voices** for speech output.
 3. **Download the Vosk model**
    ```bash
    wget https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip

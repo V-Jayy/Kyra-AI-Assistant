@@ -1,6 +1,7 @@
 {
   "wake_word": "Hey Aurora",
   "debug": true,
-  "tts_engine": "gtts"
-  ,"conversational_mode": true
+  "tts_engine": "gtts",
+  "tts": { "engine": "edge", "voice": "en-US-AriaNeural" },
+  "conversational_mode": true
 }

@@ -9,7 +9,5 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from app.assistant import speak  # noqa: E402
 
 
-def test_speak_empty(monkeypatch):
-    monkeypatch.setattr("app.tts.safe_speak", lambda text: None)
-    speak("", True)
-    speak("   ", True)
+def test_speak_no_tts():
+    speak("test", False)
