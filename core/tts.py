@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import os
 from tempfile import NamedTemporaryFile
+import shutil
+import subprocess
+import sys
 
 try:
     import pyttsx3
@@ -22,15 +25,31 @@ def speak(text: str) -> None:
     if not text:
         return
 
-    if gTTS and playsound:
+    if gTTS:
         try:
             tts_obj = gTTS(text)
             with NamedTemporaryFile(delete=False, suffix=".mp3") as f:
                 tts_obj.save(f.name)
-            try:
-                playsound(f.name)
-            finally:
-                os.remove(f.name)
+            played = False
+            if playsound:
+                try:
+                    playsound(f.name)
+                    played = True
+                except Exception as e:
+                    print(f"playsound failed: {e}")
+            if not played:
+                try:
+                    if sys.platform == "win32":
+                        os.startfile(f.name)
+                    elif shutil.which("xdg-open"):
+                        subprocess.Popen(["xdg-open", f.name])
+                    elif shutil.which("afplay"):
+                        subprocess.Popen(["afplay", f.name])
+                    else:
+                        print("No audio player available")
+                except Exception as e:
+                    print(f"Audio playback failed: {e}")
+            os.remove(f.name)
             return
         except Exception as e:
             print(f"TTS failed: {e}")

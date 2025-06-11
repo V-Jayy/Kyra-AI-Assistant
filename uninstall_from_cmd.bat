@@ -1,7 +1,7 @@
 @echo off
-set TARGET=%USERPROFILE%\AppData\Local\Microsoft\WindowsApps\Kyra.cmd
-if exist "%TARGET%" (
-    del "%TARGET%"
+set "LAUNCH=C:\Windows\Kyra.bat"
+if exist "%LAUNCH%" (
+    del "%LAUNCH%"
     echo Kyra command uninstalled.
 ) else (
     echo Kyra command was not found.

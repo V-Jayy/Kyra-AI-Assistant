@@ -217,36 +217,51 @@ def kill_process(name: str) -> Tuple[bool, str]:
 
 @tool
 def install_cmd() -> Tuple[bool, str]:
-    """Install Kyra as a `Kyra` command available in CMD."""
+    """Install Kyra system-wide with a `Kyra` command."""
     import shutil
     import sys
+    import subprocess
 
+    if os.name == "nt":
+        target = os.environ.get("KYRA_INSTALL_DIR", r"C:\\Program Files\\Kyra")
+        launcher = os.environ.get("KYRA_LAUNCHER_PATH", r"C:\\Windows\\Kyra.bat")
+        try:
+            os.makedirs(target, exist_ok=True)
+            root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+            shutil.copytree(root, target, dirs_exist_ok=True)
+            venv_dir = os.path.join(target, "venv")
+            if not os.path.isdir(venv_dir):
+                subprocess.check_call([sys.executable, "-m", "venv", venv_dir])
+                pip = os.path.join(venv_dir, "Scripts", "pip.exe")
+                req = os.path.join(target, "requirements.txt")
+                subprocess.check_call([pip, "install", "-r", req])
+
+            os.makedirs(os.path.dirname(launcher), exist_ok=True)
+            with open(launcher, "w", newline="") as f:
+                f.write("@echo off\n")
+                f.write(f'cd /d "{target}"\n')
+                f.write(f'"{os.path.join(venv_dir, "Scripts", "python.exe")}" -m app.assistant %*\n')
+            return True, f"Installed to {target}"
+        except Exception as exc:  # pragma: no cover - platform dependent
+            return False, str(exc)
+
+    # Non-Windows fallback: copy to first writable PATH dir
     root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     for p in os.getenv("PATH", "").split(os.pathsep):
-        if not p:
-            continue
-        if not os.access(p, os.W_OK):
+        if not p or not os.access(p, os.W_OK):
             continue
         try:
             dest = os.path.join(p, "Kyra")
             shutil.copytree(root, dest, dirs_exist_ok=True)
-            script = os.path.join(p, "Kyra.cmd" if os.name == "nt" else "Kyra")
-            if os.name == "nt":
-                content = (
-                    "@echo off\n"
-                    "cd /d %~dp0Kyra\n"
-                    f"{sys.executable} -m app.assistant %*"
-                )
-            else:
-                content = (
-                    "#!/bin/sh\n"
-                    "cd \"$(dirname \"$0\")/Kyra\"\n"
-                    f"exec {sys.executable} -m app.assistant \"$@\""
-                )
+            script = os.path.join(p, "Kyra")
+            content = (
+                "#!/bin/sh\n"
+                f'cd "{dest}"\n'
+                f'exec {sys.executable} -m app.assistant "$@"\n'
+            )
             with open(script, "w", newline="") as f:
                 f.write(content)
-            if os.name != "nt":
-                os.chmod(script, 0o755)
+            os.chmod(script, 0o755)
             return True, f"Installed to {p}"
         except Exception:
             continue
@@ -255,8 +270,19 @@ def install_cmd() -> Tuple[bool, str]:
 
 @tool
 def uninstall_cmd() -> Tuple[bool, str]:
-    """Remove the `Kyra` command installed by install_cmd."""
+    """Remove the files installed by :func:`install_cmd`."""
     import shutil
+
+    if os.name == "nt":
+        target = os.environ.get("KYRA_INSTALL_DIR", r"C:\\Program Files\\Kyra")
+        launcher = os.environ.get("KYRA_LAUNCHER_PATH", r"C:\\Windows\\Kyra.bat")
+        try:
+            shutil.rmtree(target, ignore_errors=True)
+            if os.path.exists(launcher):
+                os.remove(launcher)
+            return True, "Uninstalled"
+        except Exception as exc:  # pragma: no cover - platform dependent
+            return False, str(exc)
 
     success = False
     for p in os.getenv("PATH", "").split(os.pathsep):
@@ -267,7 +293,7 @@ def uninstall_cmd() -> Tuple[bool, str]:
             if os.path.isdir(target_dir):
                 shutil.rmtree(target_dir)
                 success = True
-            script = os.path.join(p, "Kyra.cmd" if os.name == "nt" else "Kyra")
+            script = os.path.join(p, "Kyra")
             if os.path.exists(script):
                 os.remove(script)
                 success = True
